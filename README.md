@@ -1,5 +1,118 @@
 # COMP90024 Team 54
 
+## Software Stack Installation
+### Pre-requirements
+
+OpenStack clients >= 5.8.x ([Installation instructions](https://docs.openstack.org/newton/user-guide/common/cli-install-openstack-command-line-clients.html)).
+
+Not: Please ensure the following Openstack clients are installed: python-cinderclient, python-keystoneclient, python-magnumclient, python-neutronclient, python-novaclient, python-octaviaclient. See: [Install the OpenStack client](https://docs.openstack.org/newton/user-guide/common/cli-install-openstack-command-line-clients.html).
+
+
+JQ >= 1.7.x ([Installation instructions](https://jqlang.github.io/jq/download/)).
+kubectl >= 1.30.0 and < 1.33.0 ([Installation instructions](https://kubernetes.io/docs/tasks/tools/)).
+Helm >= 3.17.x ([Installation instructions](https://helm.sh/docs/intro/install/)).
+MRC project with enough resources to create a Kubernetes cluster.
+
+Open a shell and move to the directory of this repository.
+## Client Configuration
+
+
+Log in to the MRC (or Nectar) Dashboard with your University of Melbourne credentials and select the project you want to use(unimelb-comp90024-54-2025).
+
+
+
+Download the OpenStack RC file from the User menu.
+
+
+
+Obtain the Openstack password from User -> Settings menu, click on Reset Password on the left and save the password in a safe place.
+
+
+
+Source the OpenStack RC file downloaded in step 2 in your terminal and enter the password obtained in step 3 when prompted.
+
+
+
+Note: Password will not be displayed on the screen when typed.
+
+
+`source ./<your project name>-openrc.sh`
+
+
+
+
+
+Click Project -> Compute -> Key Pairs -> Create Key Pair and create a new key pair named mykeypair (replace mykeypair with the name you prefer) and import the public key. Keep the private key file downloaded (e.g. mykeypair.pem) in a safe place.
+
+
+
+
+All team members must have their key pairs created and the public key file added to the project (see the previous step).
+
+
+- Check whether the cluster has been created healthy (it may take more than 15 minutes).
+
+`openstack coe cluster show comp90024 --fit-width`
+
+## Check whether the cluster has been created healthy (it may take more than 15 minutes).
+
+`openstack coe cluster show comp90024 --fit-width`
+
+> Note: status should be CREATE_COMPLETE, health_status should be HEALTHY and coe_version should be v1.31.1
+
+Move the config file to .kube (you may need to craete .kube folder)
+```
+mv config ~/.kube/config
+chmod 600 ~/.kube/config
+```
+
+Check all ElasticSearch pods are running before proceeding:
+
+`kubectl get pods -l release=elasticsearch -n elastic --watch`
+
+To check all service are created
+
+`kubectl get service -n elastic`
+
+
+## Fission Client
+
+Mac & Linux
+
+```
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+curl -Lo fission https://github.com/fission/fission/releases/download/v${FISSION_VERSION}/fission-v${FISSION_VERSION}-${OS}-amd64 \
+   && chmod +x fission && sudo mv fission /usr/local/bin/
+```
+
+
+
+
+Note: on Apple M1-M4 microprocessors the architecture must be arm64 and not amd64
+
+
+Mac (brew)
+
+```
+brew tap xxxbrian/tap
+brew install fission-cli
+```
+
+### Validate the installation
+
+`fission check`
+
+
+
+
+
+
+Windows
+For Windows, please use the Linux binary on WSL.
+
+### Apply secret for elastic 
+
+`kubectl apply -f specs/elastic-secret.yaml`
 
 
 ## Getting started
@@ -15,14 +128,14 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin https://gitlab.unimelb.edu.au/junjwang3/comp90024-team-54.git
+git remote add origin https://gitlab.com/junjwang3/comp90024-team-54.git
 git branch -M main
 git push -uf origin main
 ```
 
 ## Integrate with your tools
 
-- [ ] [Set up project integrations](https://gitlab.unimelb.edu.au/junjwang3/comp90024-team-54/-/settings/integrations)
+- [ ] [Set up project integrations](https://gitlab.com/junjwang3/comp90024-team-54/-/settings/integrations)
 
 ## Collaborate with your team
 
