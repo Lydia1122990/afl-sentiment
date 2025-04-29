@@ -24,7 +24,7 @@ reddit = praw.Reddit(
 es_password = os.getenv("ES_PASSWORD")
 es_username = os.getenv("ES_USERNAME")
 es = Elasticsearch(
-    hosts=["http://localhost:9200"],
+    hosts=["https://localhost:9200"],
     basic_auth=(es_username, es_password),
     verify_certs=False,
 )
@@ -47,7 +47,7 @@ def process_post(posts, subreddit):
     try:
         text = f"{posts.title or ''} {posts.selftext or ''}".lower()
         found_city = next((city for city in subreddit_prefix if city in text), None)
-        if found_city:
+        if found_city == subreddit:
             sentiment = sentimentAnalyser.polarity_scores(
                 posts.title + " " + posts.selftext
             )["compound"]
@@ -62,7 +62,9 @@ def process_post(posts, subreddit):
                 "subreddit": subreddit,
                 "sentiment": sentiment,
             }
+            print("found but run before index")
             es.index(index="reddit-posts", id=posts.id, document=doc)
+            print("found and ran after index")
             print(f"Indexed:{subreddit} | {posts.title}")
     except Exception as e:
         print(f"Error processsing submission: {e}")
