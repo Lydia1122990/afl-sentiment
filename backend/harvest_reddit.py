@@ -20,19 +20,33 @@ load_dotenv()
 
 sentimentAnalyser = SentimentIntensityAnalyzer()
 
-TEAM = {"adelaide crows":1,"brisbane lions":1,"carlton":1,"collingwood":1,
-           "essendon":1,"fremantle":1,"fremantle":1,"geelong":1,"gold coast suns":1,
-           "gws giants":1,"hawthorn":1,"melbourne":1,"north melbourne":1,
-           "port adelaide":1,"richmond":1,"st kilda":1,"sydney swans":1,
-           "west coast eagles":1,"western bulldogs":1}
+TEAM = {"adelaidefc":["adelaide crows","crows", "crows reserves", "whites", "white noise","kuwarna"],
+        "brisbanelions":["brisbane lions","maroons", "gorillas", "lions"],
+        "carltonblues":["carlton","blues","blue baggers","baggers","old navy blues"],
+        "collingwoodfc":["collingwood","magpies","pies","woods","woodsmen"],
+        "essendonfc":["essendon","bombers","dons","same olds"],
+        "fremantlefc":["fremantle","dockers","freo","walyalup"], 
+        "geelongcats":["geelong","cats"],
+        "gcfc":["gold coast suns","suns","sunnies","coasters"],
+        "gwsgiants":["gws giants","greater western sydney giants","giants","gws","orange team"],
+        "hawktalk":["hawthorn","hawks"],
+        "melbournefc":["melbourne","demons","dees","narrm","redlegs","fuchsias"],
+        "northmelbournefc":["north melbourne","kangaroos","kangas","roos","north","shinboners"],
+        "weareportadelaide":["port adelaide","power","port","cockledivers", "seaside men", "seasiders", "magentas", "portonians", "ports"],
+        "richmondfc":["richmond","tigers", "tiges", "fighting fury"],
+        "stkilda":["st kilda","saints","sainters"],
+        "sydneyswans":["sydney swans","swans","swannies", "bloods"],
+        "westcoasteagles":["west coast eagles","eagles"],
+        "westernbulldogs":["western bulldogs","dogs", "doggies", "scraggers", "the scray", "footscray", "tricolours"],
+        "tasmanianafl":["tasmania football club","devils", "tassie"]}
+# map nickname to team name
+teamNickname = {}
+for team, nicknames in TEAM.items():
+    for alias in nicknames:
+        teamNickname[alias.lower()] = team
 
-reddit = praw.Reddit(
-    client_id=os.getenv("REDDIT_CLIENT_ID"),
-    client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-    user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
-)
 
-def removeEmoji(text):
+def cleanEmoji(text):
     
     """
     Remove emoji and return text
@@ -40,34 +54,77 @@ def removeEmoji(text):
     """ 
     return emoji.demojize(text).replace("::"," ").replace(":","").replace("_"," ")
 
-#                 posts.title + " " + posts.selftext
-#             )["compound"]
+def teamMentioned(text, teams=teamNickname):
+    """
+    Found team mentioned in the team
+    """
+    foundTeam = set()
+    for nickname, team in teams.items():
+        if nickname in text.lower():
+            foundTeam.add(team)
+    return list(foundTeam)
 
-def sentimentPerTeam(text, teams=TEAM):
-    teamSentiment = {team: [] for team in teams}
+def sentimentPerTeam(text,upvoteScore=1, teams=TEAM):
+    """
+    Get sentiment per team, if team is not mentioned in posts then assumed its related to subredit team
+    """
     sentences = sent_tokenize(text)
+    teamSentiment = {team: [] for team in TEAM}
     
     for sentence in sentences:
         score = sentimentAnalyser.polarity_scores(sentence)['compound']
-        for team in teams.keys():
-            if team.lower() in sentence.lower():
-                teamSentiment[team].append(score)
+        for team, nicknames in TEAM.items():
+            teamFound = any(nickname in sentence.lower() for nickname in nicknames)
+            if teamFound:
+                
+                teamSentiment[team].append(score * abs(upvoteScore)) 
     resultSentiment = {}
     for team,scores in teamSentiment.items():
         if scores:
-            resultSentiment[team] = round(sum(scores)/len(scores),3)
-    # Aggregate average score per team
+            resultSentiment[team] = round(sum(scores) / sum([abs(upvoteScore)] * len(scores)), 3)
+        elif any(nickname in text.lower() for nickname in TEAM[team]):
+                score = sentimentAnalyser.polarity_scores(text)['compound']
+                resultSentiment[team] = round(score * abs(upvoteScore), 3)
+    # Aggregate average score per team 
     return resultSentiment 
+ 
+def harvestSubreddit(subreddit, postLimits=10):
+    """
+    Harvest post and its comments and get the sentiment value
+    """ 
+    reddit = praw.Reddit(
+        client_id=os.getenv("REDDIT_CLIENT_ID"),
+        client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
+        user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
+    )
+    subreddit = reddit.subreddit(subreddit)
 
-comment = "Fremantle fan here Can I just say FUCK EEEEVEERYONE ELSE?? FUCK everyone, I can’t stand watching my team, and I’m sure you guys feel similar at times. I actually like so many of your players and fans, that I don’t even dislike Carlton anymore, like, at all. I feel filthy. I feel for you tho, even if your loss was probably about 1/3 of how embarrassing ours was. Like what is the point of watching my piss poor team and why am I going to watch them next week anyway 😭😭"
-print(sentimentPerTeam(comment))
+    for post in subreddit.new(limit=postLimits): 
+        text = cleanEmoji(post.title + " " + post.selftext)
+        postTeams = teamMentioned(text)
+        
+        if postTeams:
+            sentiment = sentimentPerTeam(text,post.score, postTeams)
+            print(f"teamMentioned: {postTeams}")
+            print(f"text: {text}")
+            print(f"[POST SENTIMENT] {sentiment}")
+        else: 
+            sentiment =  sentimentAnalyser.polarity_scores(text)['compound']
+            print(f"[POST SENTIMENT] {sentiment}")
+            
+        post.comments.replace_more(limit=0) 
 
+        for comment in post.comments.list():
+            commentText = cleanEmoji(comment.body)
+            # Skip if it's reply to another comment AND doesn't mention a team
+            if comment.parent_id.startswith("t1_") and not teamMentioned(comment.body):
+                continue
+            mentioned = teamMentioned(commentText) 
+            if mentioned:
+                score = sentimentPerTeam(commentText,comment.score)
+                print(f"Comment (Score: {comment.score}): {score} \n-> {comment.body}\n")
 
-count = reddit.subreddit("AFL").subscribers
-s = reddit.subreddits.popular()
-
-
-
+harvestSubreddit("StKilda",postLimits=5)
 # es_password = os.getenv("ES_PASSWORD")
 # es_username = os.getenv("ES_USERNAME")
 # es = Elasticsearch(
@@ -76,47 +133,10 @@ s = reddit.subreddits.popular()
 #     verify_certs=False,
 # )
 
-# subreddit_prefix = [
-#     "melbourne",
-#     "perth",
-#     "sydney",
-#     "brisbane",
-#     "adelaide",
-#     "canberra",
-#     "hobart",
-#     "darwin",
-# ]
 
 
 
 
-
-
-# def process_post(posts, subreddit):
-#     try:
-#         text = f"{posts.title or ''} {posts.selftext or ''}".lower()
-#         found_city = next((city for city in subreddit_prefix if city in text), None)
-#         if found_city == subreddit:
-#             sentiment = sentimentAnalyser.polarity_scores(
-#                 posts.title + " " + posts.selftext
-#             )["compound"]
-#             doc = {
-#                 "platform": "Reddit",
-#                 "city": subreddit,
-#                 "title": posts.title,
-#                 "selftext": posts.selftext,
-#                 "url": posts.url,
-#                 "created_utc": posts.created_utc,
-#                 "score": posts.score,
-#                 "subreddit": subreddit,
-#                 "sentiment": sentiment,
-#             }
-#             print("found but run before index")
-#             es.index(index="reddit-posts", id=posts.id, document=doc)
-#             print("found and ran after index")
-#             print(f"Indexed:{subreddit} | {posts.title}")
-#     except Exception as e:
-#         print(f"Error processsing submission: {e}")
 
 
 # if __name__ == "__main__":
