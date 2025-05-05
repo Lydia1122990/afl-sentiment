@@ -1,14 +1,11 @@
-import re
-import sys
 import praw
 from praw.models.listing.mixins import submission
 from praw.reddit import Subreddit
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-import time
-from elasticsearch import Elasticsearch
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
+from elasticsearch import Elasticsearch, exceptions
 import os
-from dotenv import load_dotenv
-import traceback
+from datetime import datetime
+from dotenv import load_dotenv 
 import nltk
 nltk.download('punkt_tab')
 import emoji
@@ -66,29 +63,63 @@ def teamMentioned(text, teams=teamNickname):
 
 def sentimentPerTeam(text,upvoteScore=1, teams=TEAM):
     """
-    Get sentiment per team, if team is not mentioned in posts then assumed its related to subredit team
+    Get total weighted sentiment per team , if team is not mentioned in posts then assumed its related to subredit team
     """
     sentences = sent_tokenize(text)
     teamSentiment = {team: [] for team in TEAM}
     
     for sentence in sentences:
-        score = sentimentAnalyser.polarity_scores(sentence)['compound']
+        sentiment = sentimentAnalyser.polarity_scores(sentence)['compound']
         for team, nicknames in TEAM.items():
             teamFound = any(nickname in sentence.lower() for nickname in nicknames)
             if teamFound:
                 
-                teamSentiment[team].append(score * abs(upvoteScore)) 
+                teamSentiment[team].append(sentiment * abs(upvoteScore)) 
     resultSentiment = {}
-    for team,scores in teamSentiment.items():
-        if scores:
-            resultSentiment[team] = round(sum(scores) / sum([abs(upvoteScore)] * len(scores)), 3)
+    for team,sentiments in teamSentiment.items():
+        if sentiments:
+            resultSentiment[team] = round(sum(sentiments) / sum([abs(upvoteScore)] * len(sentiments)), 3)
         elif any(nickname in text.lower() for nickname in TEAM[team]):
-                score = sentimentAnalyser.polarity_scores(text)['compound']
-                resultSentiment[team] = round(score * abs(upvoteScore), 3)
-    # Aggregate average score per team 
+                sentiments = sentimentAnalyser.polarity_scores(text)['compound']
+                resultSentiment[team] = round(sentiments * abs(upvoteScore), 3)
     return resultSentiment 
+
+def storeElastic(text,post,postType,sentiments, teamsBool):
+    es_password = os.getenv("ES_PASSWORD")
+    es_username = os.getenv("ES_USERNAME")
+    es = Elasticsearch(
+    hosts=["http://localhost:9200"],
+    basic_auth=(es_username, es_password))
+    try:
+        if teamsBool:
+            for team,sentiment in sentiments.items(): 
+                doc = {"type": postType,
+                       
+                      "team": team,
+                      "sentiment":sentiment,
+                      "text": text,
+                      "upvote":post.score,
+                      "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
+                      "url":post.url,
+                }
+        else:
+            doc = {"type": postType,
+                       
+                      "team": post.subreddit.display_name,
+                      "sentiment":sentiments,
+                      "text": text,
+                      "upvote":post.score,
+                      "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
+                      "url":post.url,
+                }
+        return "ok"
+    #             es.create(index="afl-sentiment",id=f"{post.id}_{team}",document=doc)
+    except exceptions.ConflictError:
+        print("Document already exists, skipping...")
+        return "ok"
+        
  
-def harvestSubreddit(subreddit, postLimits=10):
+def harvestSubreddit(redditTeam, postLimits=10):
     """
     Harvest post and its comments and get the sentiment value
     """ 
@@ -97,20 +128,22 @@ def harvestSubreddit(subreddit, postLimits=10):
         client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
         user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
     )
-    subreddit = reddit.subreddit(subreddit)
+    subreddit = reddit.subreddit(redditTeam)
 
     for post in subreddit.new(limit=postLimits): 
-        text = cleanEmoji(post.title + " " + post.selftext)
+        text = cleanEmoji(post.title + " " + post.selftext) 
         postTeams = teamMentioned(text)
         
         if postTeams:
-            sentiment = sentimentPerTeam(text,post.score, postTeams)
-            print(f"teamMentioned: {postTeams}")
-            print(f"text: {text}")
-            print(f"[POST SENTIMENT] {sentiment}")
+            sentiment = sentimentPerTeam(text,post.score, postTeams) 
+            storeElastic(text,post,"post",sentiment,True)
         else: 
-            sentiment =  sentimentAnalyser.polarity_scores(text)['compound']
-            print(f"[POST SENTIMENT] {sentiment}")
+            sentiment =  sentimentAnalyser.polarity_scores(text)['compound'] 
+            if(sentiment < 0.05):
+                #set low impact sentiment to netural
+                sentiment = 0.0
+                # print(f"0.0: {text} {post.url}")
+            storeElastic(text,post,"post",sentiment,False)
             
         post.comments.replace_more(limit=0) 
 
@@ -121,36 +154,14 @@ def harvestSubreddit(subreddit, postLimits=10):
                 continue
             mentioned = teamMentioned(commentText) 
             if mentioned:
-                score = sentimentPerTeam(commentText,comment.score)
-                print(f"Comment (Score: {comment.score}): {score} \n-> {comment.body}\n")
+                sentiment = sentimentPerTeam(commentText,comment.score)
+
+                # print(f"comment {sentiment}")
+                # print(f"Comment (Score: {comment.score}): {sentiment} \n-> {comment.body}\n")
 
 harvestSubreddit("StKilda",postLimits=5)
-# es_password = os.getenv("ES_PASSWORD")
-# es_username = os.getenv("ES_USERNAME")
-# es = Elasticsearch(
-#     hosts=["https://localhost:9200"],
-#     basic_auth=(es_username, es_password),
-#     verify_certs=False,
-# )
 
 
 
 
 
-
-
-# if __name__ == "__main__":
-    
-    # for city in subreddit_prefix:
-    #     print(f"harvesting from r{city}")
-    #     subreddit = reddit.subreddit(city)
-    #     try:
-    #         for sub in subreddit.new(limit=5):
-    #             process_post(sub, city)
-    #             time.sleep(1.5)
-
-    #             print(reddit.auth.limits)
-    #     except Exception as e:
-    #         traceback.print_exc()
-    #         time.sleep(0.5)
-    # print("harvest compelete")
