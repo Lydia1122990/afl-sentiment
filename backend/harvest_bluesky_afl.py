@@ -24,7 +24,7 @@ def harvest_afl_posts(keyword: str, limit: int = 1000):
                 )
             )
         except Exception as e:
-            print(f"❌ fail to harvest（{keyword}）: {e}")
+            print(f"fail to harvest（{keyword}）: {e}")
             break
 
 
@@ -41,7 +41,7 @@ def harvest_afl_posts(keyword: str, limit: int = 1000):
                     'uri': post.uri,
                 })
             except Exception as e:
-                print(f"⚠️ skip one post for（{keyword}）: {e}")
+                print(f"skip one post for（{keyword}）: {e}")
                 continue
 
 
