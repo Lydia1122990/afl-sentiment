@@ -24,7 +24,7 @@ reddit = praw.Reddit(
 es_password = os.getenv("ES_PASSWORD")
 es_username = os.getenv("ES_USERNAME")
 es = Elasticsearch(
-    hosts=["https://localhost:9200"],
+    hosts=["http://localhost:9200"],
     basic_auth=(es_username, es_password),
     verify_certs=False,
 )

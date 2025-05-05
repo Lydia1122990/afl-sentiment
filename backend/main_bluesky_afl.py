@@ -4,6 +4,8 @@ import pandas as pd
 import time
 import json
 import os
+from harvest_bluesky_sentiment import harvest_afl_sentiment
+
 
 # seen_uris: avoid duplicate posts
 SEEN_FILE = "seen_uris.txt"
@@ -26,7 +28,8 @@ new_uris = set()
 
 for team in AFL_TEAMS:
     print(f"Harvesting posts for {team}...")
-    posts = harvest_afl_posts(team, limit=300)
+    posts = harvest_afl_sentiment(team, limit=100)
+
     time.sleep(5)
     for post in posts:
         if post['uri'] in seen_uris:
@@ -38,6 +41,7 @@ for team in AFL_TEAMS:
             'text': post['text'],
             'post_time': post['post_time'],
             'url': post['url'],
+            'sentiment': post['sentiment'],
         }
         all_posts.append(post_data)
 
