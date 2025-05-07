@@ -1,8 +1,10 @@
 import json
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from nltk.tokenize import sent_tokenize
 from flask import request
-nltk.download('punkt')
+# import nltk
+# nltk.data.path.append("nltk_data")
+# nltk.download('punkt')
+# from nltk.tokenize import sent_tokenize
 # add team in future if more team join ALF
 
 TEAM = {"adelaidefc":["adelaide crows","crows", "crows reserves", "whites", "white noise","kuwarna"],
@@ -28,16 +30,17 @@ TEAM = {"adelaidefc":["adelaide crows","crows", "crows reserves", "whites", "whi
 sentimentAnalyser = SentimentIntensityAnalyzer()
 
 def main():
-    """
-    Get total weighted sentiment per team , if team is not mentioned in posts then assumed its related to subredit team
-    """
-    payload = request.get_json()
+#     """
+#     Get total weighted sentiment per team , if team is not mentioned in posts then assumed its related to subredit team
+#     """
+    payload = request.json
     text = payload["text"]
     upvoteScore = payload.get("upvote",1)
     postTeams = payload["postTeams"]
-    sentences = sent_tokenize(text)
+    sentences = [s.strip() for s in text.split('.') if s.strip()]
     teamSentiment = {team: [] for team in postTeams}
-    
+#     if not request.is_json:
+#         return json.dumps({"error": "Invalid JSON"}), 400
     for sentence in sentences:
         sentiment = sentimentAnalyser.polarity_scores(sentence)['compound']
         teams = set()
