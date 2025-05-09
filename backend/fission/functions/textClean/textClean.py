@@ -9,7 +9,19 @@ def main():
         print("Missing text key in JSON data") 
         
     text = data["text"]
-    cleaned = emoji.demojize(text).replace("::", " ").replace(":", "").replace("_", " ").replace("\n","")
+    invalidStr = {
+    "::": " ",
+    ":": "",
+    "_": " ",
+    "\n": "",
+    "\u2019": "",
+    '\u00a0': " ",
+    '\u2026': "...",
+    '"': ""
+    }
+    cleaned = emoji.demojize(text)
+    for old, new in invalidStr.items():
+        cleaned = cleaned.replace(old, new)
 
     # Return cleaned text
     return  json.dumps({"cleanedText": cleaned})
