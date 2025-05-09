@@ -7,8 +7,10 @@ curl -v -X POST http://localhost:8888/sentiment-per-team   -H "Content-Type: app
 
 fission pkg info --name sentiment-pkg
 
-Delete functio nand package if requried
+Delete functio nand package if required
+
 ``
 fission fn delete --name sentiment-team
 fission package delete --name sentiment-pkg
+
 ``
