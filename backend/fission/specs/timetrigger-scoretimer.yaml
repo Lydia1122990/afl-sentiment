@@ -1,0 +1,11 @@
+apiVersion: fission.io/v1
+kind: TimeTrigger
+metadata:
+  creationTimestamp: null
+  name: scoretimer
+spec:
+  cron: 0 10 * * MON
+  functionref:
+    functionweights: null
+    name: scoreharvester
+    type: name
