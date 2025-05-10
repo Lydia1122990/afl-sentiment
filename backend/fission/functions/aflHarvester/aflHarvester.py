@@ -52,7 +52,7 @@ def cleanText(text):
     """
     Send text to fission fucntion text-clean for cleaning and return cleaned text
     """
-    url='http://textclean.default.svc.cluster.local:9090/text-clean'
+    url='http://router.fission/text-clean'
     payload = {"text":text}
     response = requests.post(url,json=payload)
     return response.json()["cleanedText"]
@@ -136,11 +136,38 @@ def storeElastic(text,post,postType,sentiments, teamsBool,commentID=False):
     except exceptions.ConflictError:
         print(f"Document {post.id}_{team} already exists, skipping...")
         return "ok"
-        
+    
+def saveLastPost(es, subredditName, postFullname):
+    """
+    Store last post details into elastic database to store later
+    """
+    docId = f"after-{subredditName}"
+    doc = {
+        "type": "harvest-status",
+        "platform": "Reddit",
+        "team": subredditName,
+        "last": postFullname,
+        "updatedOn": datetime.datetime.now().isoformat()
+    }
+    es.index(index="harvest-details", id=docId, document=doc)
+    return "ok"
+
+def fetchLastPost(es, subredditName):
+    """
+    Fetch last post details
+    """
+    docId = f"last-{subredditName}"
+    try:
+        doc = es.get(index="afl-sentiment", id=docId)
+        return doc["_source"].get("last", None)
+    except exceptions.NotFoundError:
+        return None       
  
-def harvestSubreddit(redditTeam, postLimits=10):
+def harvestSubreddit(es,redditTeam, postLimits=10):
     """
     Harvest post and its comments and get the sentiment value
+    Fetch new posts each run. Use after or timestamp to get the next batch. Save the latest post ID it saw. 
+    keepign the code to run wihtout taking too long
     """ 
     with open("/secrets/default/elastic-secret/REDDIT_CLIENT_ID") as f:
         clientID = f.read().strip()
@@ -154,12 +181,16 @@ def harvestSubreddit(redditTeam, postLimits=10):
         client_secret=clientSecret,
         user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
     )
-    subreddit = reddit.subreddit(redditTeam)
+    subreddit = reddit.subreddit(redditTeam) 
+    after = fetchLastPost(es, redditTeam) 
+    lastPost = None
     
     for post in subreddit.new(limit=postLimits): 
         print(post.title + " " + post.selftext)
         print(post.url)
-        text = cleanText(post.title + " " + post.selftext).replace('\u2019',"'").replace('\n', ' ').replace('\"',"").replace("\u00a0","")
+        if after == post.fullname:
+            break
+        text = cleanText(post.title + " " + post.selftext)
         postTeams = teamMentioned(text)
 
         if postTeams:
@@ -180,7 +211,12 @@ def harvestSubreddit(redditTeam, postLimits=10):
             if commentTeams: 
                 sentiment = sentimentPerTeam(commentText,post.subreddit.display_name.lower(), comment.score, commentTeams)
                 storeElastic(commentText,post,"comment",sentiment,True,comment.id)
-
+        lastPost = post.fullname
+    if lastPost:
+        #Store last post details
+        saveLastPost(es,redditTeam,lastPost)
+        
+        
 def initalCheck(es, team):
     """
     Check if the team has already been harvested (by looking for any doc with team), if not then return false and set limit to 10 for active scrape
@@ -233,7 +269,7 @@ def main():
         for i in TEAM.keys():
             print(f"📦 Harvesting subreddit for: {i} with limit {limit}", flush=True)  # ✅ Step 5
             try:
-                harvestSubreddit(i,postLimits=limit)
+                harvestSubreddit(es,i,postLimits=limit)
             except Exception as e:
                 print(f"Skipping {i} due to error: {e}", flush=True) 
                 continue 
