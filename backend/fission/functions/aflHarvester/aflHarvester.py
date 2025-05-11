@@ -1,9 +1,7 @@
 import praw 
 from praw.reddit import Subreddit
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
-from elasticsearch8 import Elasticsearch, exceptions,ApiError 
-
-import os
+from elasticsearch8 import Elasticsearch, exceptions,ApiError  
 from datetime import datetime
 from dotenv import load_dotenv 
 import nltk
@@ -13,8 +11,7 @@ import requests
 from flask import request
 import json
 
-# load_dotenv()
-# reddit auth
+import redis 
 
 # fission package create --spec --name aflharvester-pkg --source ./functions/aflHarvester/aflHarvester.py --source ./functions/aflHarvester/requirements.txt --env python39 
 # fission fn create --spec --name aflharvester --pkg aflharvester-pkg --env python39 --entrypoint aflHarvester.main --specializationtimeout 180 --secret elastic-secret
@@ -158,7 +155,7 @@ def fetchLastPost(es, subredditName):
     """
     docId = f"last-{subredditName}"
     try:
-        doc = es.get(index="afl-sentiment", id=docId)
+        doc = es.get(index="check-storage", id=docId)
         return doc["_source"].get("last", None)
     except exceptions.NotFoundError:
         return None       
@@ -189,6 +186,7 @@ def harvestSubreddit(es,redditTeam, postLimits=10):
         print(post.title + " " + post.selftext)
         print(post.url)
         if after == post.fullname:
+            #reach last scrapped post then break
             break
         text = cleanText(post.title + " " + post.selftext)
         postTeams = teamMentioned(text)
@@ -245,6 +243,12 @@ def main():
 
     with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
         es_password = f.read().strip() 
+        
+    redisClient: redis.StrictRedis = redis.StrictRedis(
+        host='redis-headless.redis.svc.cluster.local',
+        socket_connect_timeout=5,
+        decode_responses=False
+    )
     # es_username = "elastic"
     # es_password = "aeyi9Ok7raengoNgahlaK4neoghooz8O"
     # "" 
@@ -252,7 +256,22 @@ def main():
     hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
     basic_auth=(es_username, es_password),verify_certs=False,ssl_show_warn=False) 
     print(f"✅ Retrieved secrets: {es_username} {es_password}", flush=True)
+    
+    response: Optional[requests.Response] = requests.post(
+        url='http://router.fission/enqueue/TEAM',
+        headers={'Content-Type': 'application/json'}
+    )
 
+
+    try:
+        team = redisClient.rpop("afl:subreddit")
+        if not team:
+            return "Queue empty", 200
+        job = json.loads(team)
+        harvestSubreddit(es, job["team"], postLimits=job["limit"])
+        return f"Harvested {job['team']}", 200
+    except ApiError as e:
+        return json.dumps({"error": str(e)}), 500        
 
     try:
         print("🔄 Running initial team check...", flush=True)
