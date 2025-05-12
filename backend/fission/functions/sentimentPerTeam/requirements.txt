@@ -1,3 +1,0 @@
-vaderSentiment
-nltk
-flask
