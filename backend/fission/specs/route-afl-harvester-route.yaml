@@ -2,21 +2,21 @@ apiVersion: fission.io/v1
 kind: HTTPTrigger
 metadata:
   creationTimestamp: null
-  name: enqueue-route
+  name: afl-harvester-route
 spec:
   createingress: true
   functionref:
     functionweights: null
-    name: enqueue
+    name: aflharvester
     type: name
   host: ""
   ingressconfig:
     annotations: null
     host: '*'
-    path: /enqueue
+    path: /aflharvester
     tls: ""
   method: ""
   methods:
   - POST
   prefix: ""
-  relativeurl: /enqueue
+  relativeurl: /aflharvester

@@ -1,3 +1,2 @@
 elasticsearch8
-flask
-redis
+praw
