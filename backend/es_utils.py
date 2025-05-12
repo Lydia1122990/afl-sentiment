@@ -8,7 +8,7 @@ load_dotenv()
 # Use the working credentials
 es_password = "aeyi9Ok7raengoNgahlaK4neoghooz8O"  # Or set this in your .env file
 es_username = "elastic"
-
+#test 
 print(f"Connecting to Elasticsearch at https://localhost:9200")
 print(f"Username: {es_username}")
 print(f"Password length: {len(es_password) if es_password else 0}")

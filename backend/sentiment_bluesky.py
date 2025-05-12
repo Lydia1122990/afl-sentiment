@@ -11,7 +11,7 @@ from datetime import datetime
 
 nltk.download('punkt')
 
-# Load environment variables
+# Load environment variables - test
 load_dotenv()
 
 # AFL teams and nicknames
