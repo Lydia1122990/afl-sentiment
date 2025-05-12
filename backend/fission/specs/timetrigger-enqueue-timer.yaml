@@ -1,0 +1,11 @@
+apiVersion: fission.io/v1
+kind: TimeTrigger
+metadata:
+  creationTimestamp: null
+  name: enqueue-timer
+spec:
+  cron: '*/5 * * * *'
+  functionref:
+    functionweights: null
+    name: enqueue
+    type: name
