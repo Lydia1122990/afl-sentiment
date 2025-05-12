@@ -1,4 +1,8 @@
 AFL_TEAMS = [
+    'Western Bulldogs'
+]
+
+AFL_TEAMS_EXTENDED = [
     '#AFL', '#AFLW', '#AFLDogsPower', '#AFLPiesCats', '#AFLSaintsFreo', '#AFLDonsNorth', ' #AFLLionsSuns', 
     '#AFLHawksTigers', '#AFLEaglesDees', '#AFLSunsSwans', '#AFLBluesCats', '#AFLPowerNorth', '#AFLPiesDons',
     'Adelaide Crows', 'Brisbane Lions', 'Carlton Blues', 'Collingwood Magpies', 'Essendon Bombers', 'Fremantle Dockers', 

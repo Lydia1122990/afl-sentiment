@@ -2,6 +2,7 @@ from atproto import Client, models
 import os
 from dotenv import load_dotenv
 import time
+from sentiment_bluesky import get_afl_teams  
 
 def harvest_afl_posts(keyword: str, limit: int = 1000):
     load_dotenv()
@@ -78,20 +79,12 @@ def harvest_afl_posts(keyword: str, limit: int = 1000):
     print(f"Results for {keyword}: {len(posts)} posts harvested")
     return posts
 
-# Example usage:
-# afl_teams = [
-#     "Adelaide Crows", "Brisbane Lions", "Carlton Blues", 
-#     "Collingwood Magpies", "Essendon Bombers", "Fremantle Dockers",
-#     "Geelong Cats", "Gold Coast Suns", "GWS Giants", "Hawthorn Hawks",
-#     "Melbourne Demons", "North Melbourne Kangaroos", "Port Adelaide Power",
-#     "Richmond Tigers", "St Kilda Saints", "Sydney Swans",
-#     "West Coast Eagles", "Western Bulldogs"
-# ]
-# 
-# all_results = {}
-# for team in afl_teams:
-#     try:
-#         team_posts = harvest_afl_posts(team)
-#         all_results[team] = team_posts
-#     except:
-#         all_results[team] = []
+
+all_results = {}
+teams = get_afl_teams()
+for team in teams:
+    try:
+        team_posts = harvest_afl_posts(team)
+        all_results[team] = team_posts
+    except:
+        all_results[team] = []

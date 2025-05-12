@@ -1,13 +1,12 @@
-from harvest_bluesky_afl import harvest_afl_posts
-from teams_bluesky_afl import AFL_TEAMS
-import pandas as pd
-import time
-import json
+from sentiment_bluesky import harvest_afl_sentiment, get_afl_teams
+from es_utils import save_to_elasticsearch
+
 import os
-from harvest_bluesky_sentiment import harvest_afl_sentiment
+import time
+import pandas as pd
+import json
 
-
-# seen_uris: avoid duplicate posts
+# 文件保存路径
 SEEN_FILE = "seen_uris.txt"
 
 def load_seen_uris(file_path=SEEN_FILE):
@@ -21,40 +20,49 @@ def save_seen_uris(uris, file_path=SEEN_FILE):
         for uri in uris:
             f.write(uri + "\n")
 
-# main
+# 主执行逻辑
 seen_uris = load_seen_uris()
 all_posts = []
 new_uris = set()
 
-for team in AFL_TEAMS:
+teams = get_afl_teams()
+for team in teams:
     print(f"Harvesting posts for {team}...")
     posts = harvest_afl_sentiment(team, limit=100)
 
     time.sleep(5)
+    team_posts = []
+
     for post in posts:
-        if post['uri'] in seen_uris:
+        if post["url"] in seen_uris:
             continue
-        new_uris.add(post['uri'])
-        post_data = {
-            'keyword': team,
-            'author': post['author'],
-            'text': post['text'],
-            'post_time': post['post_time'],
-            'url': post['url'],
-            'sentiment': post['sentiment'],
-        }
-        all_posts.append(post_data)
+        new_uris.add(post["url"])
 
+        # Remove Elasticsearch metadata fields
+        post_cleaned = {k: v for k, v in post.items() if k not in ['_index', '_id']}
+        doc_id = f"{team}_{len(team_posts)}"
 
-# save result
+        all_posts.append(post_cleaned)
+        team_posts.append((doc_id, post_cleaned))
+
+        # Save to Elasticsearch
+        save_to_elasticsearch([post_cleaned], index_name="afl_bluesky_sentiment", doc_id=doc_id)
+
+# 更新 seen_uris 文件
+save_seen_uris(new_uris)
+
+# 保存至 Elasticsearch (bulk)
+save_to_elasticsearch(all_posts, index_name="afl_bluesky_sentiment")
+
+# 保存为本地 CSV / JSON
 os.makedirs("results", exist_ok=True)
 
-# save result as CSV
+# Save as CSV
 df = pd.DataFrame(all_posts)
 df.to_csv("results/afl_posts.csv", index=False)
 
-# save result as JSON
+# Save as JSON
 with open("results/afl_posts.json", "w", encoding="utf-8") as f:
     json.dump(all_posts, f, ensure_ascii=False, indent=2)
 
-print("Results are saved as CSV file and JSON file")
+print("✅ Harvest complete. Results saved to CSV, JSON, and Elasticsearch.")
