@@ -19,7 +19,7 @@ class HTTPSession:
         """Send GET request to specified path."""
         return self.session.get(f'{self.base_url}/{path}')
 
-    def post(self, path: str, data: dict) -> requests.Response:
+    def post(self, path: str, data: dict=None, json=None) -> requests.Response:
         """Send POST request with data to specified path."""
         return self.session.post(f'{self.base_url}/{path}', json=data)
 
@@ -37,31 +37,38 @@ class TestEnd2End(unittest.TestCase):
     """End-to-end tests for the Fission `text-clean` function.""" 
     def test_textclean_status_code(self):
         self.assertEqual(
-            test_request.post("text-clean", {"text": "GO BAGGERS!! 💪"}).status_code,
+            testRequest.post("text-clean", {"text": "GO BAGGERS!! 💪"}).status_code,
             200
         )
 
     def test_textclean_response_body(self):
         self.assertIn(
             "baggers",
-            test_request.post("text-clean", {"text": "GO BAGGERS!! 💪"}).text.lower()
+            testRequest.post("text-clean", {"text": "GO BAGGERS!! 💪"}).text.lower()
         )
 
     def test_textclean_removes_emoji(self):
-        response = test_request.post("text-clean", {"text": "🏉 footy time"})
+        response = testRequest.post("text-clean", {"text": "🏉 footy time"})
         self.assertNotIn("🏉", response.text)
 
     def test_textclean_handles_empty_input(self):
-        response = test_request.post("text-clean", {"text": ""})
+        response = testRequest.post("text-clean", {"text": ""})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.text)["cleanedText"], "")
         
     def test_textclean_specialchar(self):
-        response = test_request.post("text-clean", {"text": "\u2014 \u2014 Winner\u2026"}) 
+        response = testRequest.post("text-clean", {"text": "\u2014 \u2014 Winner\u2026"}) 
         self.assertEqual(json.loads(response.text)["cleanedText"], "— — Winner...")
+    def test_enqueue(self): 
+        response = testRequest.post(
+            "enqueue",
+            json={"team": "melbournefc", "limit": 1000}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("OK", response.text)
         
 
 if __name__ == '__main__':
 
-    test_request = HTTPSession('http', 'localhost', 9090)
+    testRequest = HTTPSession('http', 'localhost', 9090)
     unittest.main()

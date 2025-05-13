@@ -21,4 +21,4 @@ spec:
   minReplicaCount: 0
   mqtkind: keda
   pollingInterval: 30
-  topic: afl
+  topic: afl:subreddit 

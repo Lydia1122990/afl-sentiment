@@ -5,3 +5,24 @@ metadata:
   name: shared-data
 data:
   ES_USERNAME: elastic
+  TEAM: |
+    {
+      "adelaidefc":["adelaide crows","crows", "crows reserves", "whites", "white noise","kuwarna"],
+      "brisbanelions":["brisbane lions","maroons", "gorillas", "lions"],
+      "CarltonBlues":["carlton","blues","blue baggers","baggers","old navy blues"],
+      "collingwoodfc":["collingwood","magpies","pies","woods","woodsmen"],
+      "EssendonFC":["essendon","bombers","dons","same olds"],
+      "FremantleFC":["fremantle","dockers","freo","walyalup"], 
+      "GeelongCats":["geelong","cats"],
+      "gcfc":["gold coast suns","suns","sunnies","coasters"],
+      "GWSgiants":["gws giants","greater western sydney giants","giants","gws","orange team"],
+      "hawktalk":["hawthorn","hawks"],
+      "melbournefc":["melbourne","demons","dees","narrm","redlegs","fuchsias"],
+      "NorthMelbourneFC":["north melbourne","kangaroos","kangas","roos","north","shinboners"],
+      "weareportadelaide":["port adelaide","power","port","cockledivers", "seaside men", "seasiders", "magentas", "portonians", "ports"],
+      "RichmondFC":["richmond","tigers", "tiges", "fighting fury"],
+      "StKilda":["st kilda","saints","sainters"],
+      "sydneyswans":["sydney swans","swans","swannies", "bloods"],
+      "westcoasteagles":["west coast eagles","eagles"],
+      "westernbulldogs":["western bulldogs","dogs", "doggies", "scraggers", "the scray", "footscray", "tricolours"]
+    }
