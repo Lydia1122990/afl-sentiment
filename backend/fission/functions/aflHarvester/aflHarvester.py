@@ -35,6 +35,14 @@ import redis
 #   --function aflharvester \
 #   --cron "*/5 * * * *" 
   
+#   curl -X PUT "http://elasticsearch-master.elastic.svc.cluster.local:9200/afl-sentiment" \
+#   -H 'Content-Type: application/json' \
+#   -u elastic:aeyi9Ok7raengoNgahlaK4neoghooz8O \
+#   -k
+#   curl -X PUT "http://elasticsearch-master.elastic.svc.cluster.local:9200/harvest-details" \
+#   -H 'Content-Type: application/json' \
+#   -u elastic:aeyi9Ok7raengoNgahlaK4neoghooz8O \
+#   -k
 
 
 sentimentAnalyser = SentimentIntensityAnalyzer()
@@ -126,7 +134,7 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                 docId = (f"{commentID}_{team}_comment " if commentID else  f"{post.id}_{team}_{postType}").lower() 
                 doc = {"type": postType,
                        "platform":"Reddit",                       
-                      "team": team,
+                      "team": team.lower(),
                       "sentiment":sentiment,
                       "text": text,
                       "upvote":post.score,
@@ -135,9 +143,10 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                 }
                 es.create(index="afl-sentiment", id=docId, document=doc)
                 print(f"added {docId} {post.subreddit.display_name.lower()}", flush=True)
-                print(json.dumps(doc,indent=4,sort_keys=True))
+                # print(json.dumps(doc,indent=4,sort_keys=True))
         else:
             count += 1
+            print("storeElastic start, flush=True")
             docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
             doc = {"type": postType,
                    "platform":"Reddit",  
@@ -150,7 +159,7 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                 }  
             es.create(index="afl-sentiment", id=docId, document=doc)
             print(f"added {count} {docId} {post.subreddit.display_name.lower()}", flush=True)
-            print(json.dumps(doc,indent=4,sort_keys=True))
+            # print(json.dumps(doc,indent=4,sort_keys=True))
         return "ok"
     except exceptions.ConflictError:
         print(f"Document {post.id}_{post.subreddit.display_name.lower()} already exists, skipping...")
@@ -162,12 +171,13 @@ def saveLastPost(es, subredditName, postFullname) -> str:
     """
     docId = f"after-{subredditName}"
     doc = {
-        "type": "harvest-status",
+        "type": "harvest-flag",
         "platform": "Reddit",
-        "team": subredditName,
-        "last": postFullname,
+        "team": subredditName.lower(),
+        "last": postFullname.lower(),
         "updatedOn": datetime.now().isoformat()
     }
+    print(f"store {docId}")
     es.index(index="harvest-details", id=docId, document=doc)
     return "ok"
 
@@ -175,9 +185,10 @@ def fetchLastPost(es, subredditName):
     """
     Fetch last post details
     """
-    docId = f"last-{subredditName}"
+    docId = f"last-{subredditName.lower()}"
+    print(f"fetch {docId}")
     try:
-        doc = es.get(index="check-storage", id=docId)
+        doc = es.get(index="harvest-details", id=docId)
         return doc["_source"].get("last", None)
     except exceptions.NotFoundError:
         return None       
@@ -199,16 +210,12 @@ def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
         user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
     )
     subreddit = reddit.subreddit(redditTeam) 
-    
-    print("fetched , flush=True")
     after = fetchLastPost(es, redditTeam) 
     
     lastPost = None
-    print("fetched Done, flush=True")
     for post in subreddit.new(limit=postLimits): 
-        print(post.title + " " + post.selftext)
         print(post.url)
-        if after == post.fullname:
+        if after == post.fullname.lower():
             #reach last scrapped post then break
             break
         text = cleanText(post.title + " " + post.selftext)
@@ -232,6 +239,7 @@ def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
             if commentTeams: 
                 sentiment = sentimentPerTeam(commentText,post.subreddit.display_name.lower(), comment.score, commentTeams)
                 storeElastic(es,commentText,post,"comment",sentiment,True,comment.id)
+        
         lastPost = post.fullname
     if lastPost:
         #Store last post details
@@ -267,7 +275,6 @@ def main():
         if not team:
             return "Queue empty", 200
         job = json.loads(team)
-        print("job extracted", flush=True)
         harvestSubreddit(es, job["team"], postLimits=job["limit"])
         print("job done", flush=True)
         return f"Harvested {job['team']}", 200
