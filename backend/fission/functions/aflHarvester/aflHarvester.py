@@ -21,7 +21,7 @@ import redis
 #     --function aflharvester \
 #     --mqtype redis \
 #     --mqtkind keda \
-#     --topic afl \
+#     --topic afl:subreddit \
 #     --errortopic errors \
 #     --maxretries 3 \
 #     --metadata address=redis-headless.redis.svc.cluster.local:6379 \
