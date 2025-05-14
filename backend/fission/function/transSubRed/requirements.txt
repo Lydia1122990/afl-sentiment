@@ -1,0 +1,2 @@
+praw
+elasticsearch8
