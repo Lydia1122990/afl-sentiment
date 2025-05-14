@@ -215,11 +215,6 @@ def main():
     redis_port = int(os.environ.get("REDIS_PORT", 6379))
     r = redis.Redis(host=redis_host, port=redis_port, db=0)
 
-    # Initialize Elasticsearch (adjust host/port as needed)
-    es_host = os.environ.get("ELASTICSEARCH_HOST", "elasticsearch")
-    es_port = int(os.environ.get("ELASTICSEARCH_PORT", 9200))
-    es = Elasticsearch(f"http://{es_host}:{es_port}")
-
     # Initialize Reddit API (set your credentials via environment variables)
     reddit = praw.Reddit(
         client_id=os.getenv("REDDIT_CLIENT_ID"),
