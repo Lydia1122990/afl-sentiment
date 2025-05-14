@@ -1,0 +1,8 @@
+praw
+vaderSentiment
+elasticsearch8
+python-dotenv
+nltk
+requests
+flask
+
