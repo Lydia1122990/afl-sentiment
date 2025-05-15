@@ -9,11 +9,11 @@ from elasticsearch8 import Elasticsearch
 # --source ./afl_sentiment_bluesky/afl_sentiment_reddit.py \
 # --source ./afl_sentiment_bluesky/requirements.txt \
 # --source ./afl_sentiment_bluesky/build.sh \
-# --env python39 --buildcmd './build.sh'
+# --env python39x --buildcmd './build.sh'
 
 # fission fn create --spec --name afl-sentiment-bluesky \
 # --pkg afl-sentiment-bluesky-pkg \
-# --env python39 \
+# --env python39x \
 # --entrypoint "afl_sentiment_bluesky.main" \
 # --specializationtimeout 180 \
 # --secret elastic-secret 
