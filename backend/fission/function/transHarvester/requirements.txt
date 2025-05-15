@@ -4,5 +4,5 @@ elasticsearch8
 python-dotenv
 nltk
 requests
-flask
+redis
 

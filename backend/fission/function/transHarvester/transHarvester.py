@@ -1,255 +1,428 @@
-import os
 import json
 import time
 import praw
 import redis
 import requests
 import nltk
+from datetime import datetime
+nltk.download('punkt_tab')
+from praw.reddit import Subreddit
 from nltk.tokenize import sent_tokenize
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from elasticsearch8 import ApiError
+from elasticsearch8 import exceptions
 from elasticsearch8 import Elasticsearch
 
-# List of keywords related to public transportation (to be provided by user)
-transport_keywords = [
-    "train", "trains", "tram", "trams", "bus", "buses", "metro", "subway", "shuttle", "light rail", "skybus",
-
-    "ptv", "myki", "vline", "yarratrams", "metro trains",
-
-    "opal",          # Sydney
-    "translink",     # Brisbane
-    "adelaidemetro", # Adelaide
-    "act transport", # Canberra
-    "perth transport",  # Perth 
-    "hobart bus",    # Hobart 
-    "darwinbus",     # Darwin
-
-    "train fare", "tram fare", "bus fare", "metro fare", "vline fare", "light rail fare",
-    "train ticket", "tram ticket", "bus ticket", "metro ticket", "vline ticket",
-
-    "train delay", "tram delay", "bus delay", "vline delay",
-    "train cancelled", "tram cancelled", "bus cancelled",
-    "train shutdown", "tram shutdown", "rail shutdown",
-    "train maintenance", "tram maintenance", "track maintenance", "signal fault",
-
-    "train replacement", "tram replacement", "bus replacement", "replacement bus",
-    "train trackwork", "tram trackwork", "bus trackwork",
-    "train service change", "tram service change", "bus service change",
-    "train no service", "tram no service", "bus no service",
-    "train diversion", "tram diversion", "bus diversion",
-    "train engineering works", "tram engineering works", "bus engineering works",
-    "train weekend closure", "tram weekend closure", "bus weekend closure",
-    "train driver shortage", "tram driver shortage", "bus driver shortage"
-
-    "crowded train", "crowded tram", "overcrowded bus", "late train", "on time train", "train overcrowding"
-
-    "fare evasion", "ticket evasion", "dodging fare", "fare dodger",
-    "fare dodging", "evading fare", "jumping fare", "ride without ticket",
-    "got caught without myki", "fare fine",
-    "fined for no ticket", "didn't tap on", "forgot to tap", 
-    "inspection", "ticket inspector", "ticket check", "fare compliance"
-
-    # Melbourne
-    "no myki", "myki fine", "forgot myki", "didn't tap myki",
-    "myki evasion", "caught without myki"
-
-    # Sydney
-    "no opal", "opal fine", "forgot opal", "didn't tap opal",
-    "opal evasion", "caught without opal"
-    # Brisbane
-    "no gocard", "go card fine", "forgot go card", "didn't tap go card",
-    "translink fine", "caught without gocard"
-    # Adelaide
-    "no metrocard", "metrocard fine", "adelaide metro fine", "forgot metrocard"
-    # Canberra
-    "no myway", "myway fine", "didn't tap myway"
-]
+sentimentAnalyser = SentimentIntensityAnalyzer()
 # List of city names (to be provided by user)
-city_names = [
-    "melb", "melbourne", "syd", "sydney", "bne", "brisbane", "adl", "adelaide", "perth",
-    "cbr", "canberra", "hobart", "darwin"
+CITY = {
+"Melbourne": [
+  "melbourne train",
+  "melbourne tram",
+  "melbourne bus",
+  "melbourne metro",
+  "melbourne shuttle",
+  "melbourne light rail",
+  "melbourne skybus",
+  "melbourne myki",
+  "melbourne vline",
+  "melbourne yarratrams",
+  "melbourne metro trains",
+  "melbourne train delay",
+  "melbourne tram delay",
+  "melbourne bus delay",
+  "melbourne train fare",
+  "melbourne tram fare",
+  "melbourne bus fare",
+  "melbourne train ticket",
+  "melbourne tram ticket",
+  "melbourne bus ticket",
+  "melbourne overcrowded train",
+  "melbourne overcrowded tram",
+  "melbourne overcrowded bus",
+  "melbourne track maintenance",
+  "melbourne bus replacement"
+],
+
+"Sydney": [
+  "sydney train",
+  "sydney tram",
+  "sydney bus",
+  "sydney metro",
+  "sydney light rail",
+  "sydney ferry",
+  "sydney opal",
+  "sydney train delay",
+  "sydney tram delay",
+  "sydney bus delay",
+  "sydney train fare",
+  "sydney tram fare",
+  "sydney bus fare",
+  "sydney train ticket",
+  "sydney tram ticket",
+  "sydney bus ticket",
+  "sydney overcrowded train",
+  "sydney overcrowded tram",
+  "sydney overcrowded bus",
+  "sydney track maintenance",
+  "sydney bus replacement"
+],
+
+"Brisbane": [
+  "brisbane train",
+  "brisbane tram",
+  "brisbane bus",
+  "brisbane metro",
+  "brisbane shuttle",
+  "brisbane light rail",
+  "brisbane translink",
+  "brisbane gocard",
+  "brisbane train delay",
+  "brisbane tram delay",
+  "brisbane bus delay",
+  "brisbane train fare",
+  "brisbane tram fare",
+  "brisbane bus fare",
+  "brisbane train ticket",
+  "brisbane tram ticket",
+  "brisbane bus ticket",
+  "brisbane overcrowded train",
+  "brisbane overcrowded tram",
+  "brisbane overcrowded bus",
+  "brisbane track maintenance",
+  "brisbane bus replacement"
+],
+
+"Adelaide": [
+  "adelaide train",
+  "adelaide tram",
+  "adelaide bus",
+  "adelaide metro",
+  "adelaide shuttle",
+  "adelaide light rail",
+  "adelaide adelaidemetro",
+  "adelaide metrocard",
+  "adelaide train delay",
+  "adelaide tram delay",
+  "adelaide bus delay",
+  "adelaide train fare",
+  "adelaide tram fare",
+  "adelaide bus fare",
+  "adelaide train ticket",
+  "adelaide tram ticket",
+  "adelaide bus ticket",
+  "adelaide overcrowded train",
+  "adelaide overcrowded tram",
+  "adelaide overcrowded bus",
+  "adelaide track maintenance",
+  "adelaide bus replacement"
+],
+
+"Perth": [
+  "perth train",
+  "perth tram",
+  "perth bus",
+  "perth metro",
+  "perth shuttle",
+  "perth light rail",
+  "perth transperth",
+  "perth train delay",
+  "perth tram delay",
+  "perth bus delay",
+  "perth train fare",
+  "perth tram fare",
+  "perth bus fare",
+  "perth train ticket",
+  "perth tram ticket",
+  "perth bus ticket",
+  "perth overcrowded train",
+  "perth overcrowded tram",
+  "perth overcrowded bus",
+  "perth track maintenance",
+  "perth bus replacement"
+],
+
+"Canberra": [
+  "canberra train",
+  "canberra tram",
+  "canberra bus",
+  "canberra metro",
+  "canberra shuttle",
+  "canberra light rail",
+  "canberra act transport",
+  "canberra myway",
+  "canberra train delay",
+  "canberra tram delay",
+  "canberra bus delay",
+  "canberra train fare",
+  "canberra tram fare",
+  "canberra bus fare",
+  "canberra train ticket",
+  "canberra tram ticket",
+  "canberra bus ticket",
+  "canberra overcrowded train",
+  "canberra overcrowded tram",
+  "canberra overcrowded bus",
+  "canberra track maintenance",
+  "canberra bus replacement"
+],
+
+"Hobart": [
+  "hobart train",
+  "hobart tram",
+  "hobart bus",
+  "hobart metro",
+  "hobart shuttle",
+  "hobart light rail",
+  "hobart bus service",
+  "hobart train delay",
+  "hobart tram delay",
+  "hobart bus delay",
+  "hobart train fare",
+  "hobart tram fare",
+  "hobart bus fare",
+  "hobart train ticket",
+  "hobart tram ticket",
+  "hobart bus ticket",
+  "hobart overcrowded train",
+  "hobart overcrowded tram",
+  "hobart overcrowded bus",
+  "hobart track maintenance",
+  "hobart bus replacement"
+],
+
+"Darwin": [
+  "darwin train",
+  "darwin tram",
+  "darwin bus",
+  "darwin metro",
+  "darwin shuttle",
+  "darwin light rail",
+  "darwinbus",
+  "darwin train delay",
+  "darwin tram delay",
+  "darwin bus delay",
+  "darwin train fare",
+  "darwin tram fare",
+  "darwin bus fare",
+  "darwin train ticket",
+  "darwin tram ticket",
+  "darwin bus ticket",
+  "darwin overcrowded train",
+  "darwin overcrowded tram",
+  "darwin overcrowded bus",
+  "darwin track maintenance",
+  "darwin bus replacement"
 ]
+}
+cityNickname = {}
+for city, nicknames in CITY.items():
+    for alias in nicknames:
+        cityNickname[alias.lower()] = city
 
-def match_topic(text):
-    """
-    Check if any keyword related to public transportation is in the text.
-    """
-    if not text:
-        return False
-    text_lower = text.lower()
-    for kw in transport_keywords:
-        if kw and kw.lower() in text_lower:
-            return True
-    return False
-
-def city_contain(text):
+def cityContain(text, cities = cityNickname):
     """
     Check if any city name is in the text.
-    Returns the first matching city name or None.
     """
-    if not text:
-        return None
-    text_lower = text.lower()
-    for city in city_names:
-        if city and city.lower() in text_lower:
-            return city
-    return None
+    foundCity = set()
+    for nickname, city in cities.items():
+        if nickname in text.lower():
+            foundCity.add(city)
+    return list(foundCity)
 
-def clean_text(text):
+def cleanText(text):
     """
-    Use the Fission text-clean microservice to clean the text.
+    Send text to fission fucntion text-clean for cleaning and return cleaned text
     """
-    try:
-        res = requests.post("http://router.fission/text-clean", json={"text": text})
-        if res.status_code == 200:
-            result = res.json()
-            return result.get("text", "")
-    except Exception as e:
-        print(f"Text-clean service error: {e}")
-    return text
+    url='http://router.fission/text-clean'
+    payload = {"text":text}
+    response = requests.post(url,json=payload)
+    return response.json()["cleanedText"]
 
-def analyze_text(text, analyzer):
+def sentimentPerCity(text,postSub, upvoteScore=1, cities=CITY):
     """
-    Analyze the sentiment of the text using VADER on a sentence basis.
-    Returns the average compound sentiment score.
+    Get total weighted sentiment per city , if city is not mentioned in posts then assumed its related to subredit city
     """
-    if not text:
-        return 0.0
     sentences = sent_tokenize(text)
-    if not sentences:
-        return 0.0
-    score_sum = 0.0
+    citySentiment = {city: [] for city in cities}
+    
     for sentence in sentences:
-        vs = analyzer.polarity_scores(sentence)
-        score_sum += vs["compound"]
-    return score_sum / len(sentences)
-
-def process_submission(submission, task_team, es, analyzer):
-    """
-    Process a single Reddit submission (post):
-    - Clean text, check topic/city relevance
-    - Calculate sentiment score
-    - Store result in Elasticsearch
-    - Process comments similarly
-    """
-    # Prepare content text (title + body for posts)
-    text = ""
-    if getattr(submission, "title", ""):
-        text = submission.title + " "
-    if getattr(submission, "selftext", ""):
-        text += submission.selftext
-
-    cleaned_text = clean_text(text)
-    # Check if relevant
-    has_topic = match_topic(cleaned_text)
-    has_city = city_contain(cleaned_text) is not None
-
-    if not has_topic and not has_city:
-        # Skip if not relevant to public transportation
-        return
-
-    # Compute sentiment for the post
-    sentiment_score = analyze_text(cleaned_text, analyzer)
-
-    # Determine city for this document
-    city_name = city_contain(cleaned_text)
-    if not city_name:
-        # If not found in text, use task team if it's a specific city (and not 'publictransport')
-        if task_team.lower() != "publictransport":
-            city_name = task_team
+        sentiment = sentimentAnalyser.polarity_scores(sentence)['compound'] 
+        for city, nicknames in CITY.items():
+            cityFound = any(nickname in sentence.lower() for nickname in nicknames)
+            if cityFound:
+                citySentiment[city].append(sentiment * abs(upvoteScore)) # multiple by upvote score to get weighted sentiment
+        if not cityFound:
+            if postSub not in citySentiment:
+                citySentiment[postSub] = []
+            sentiment = sentimentAnalyser.polarity_scores(sentence)['compound']
+            citySentiment[postSub].append(sentiment * abs(upvoteScore))
+    resultSentiment = {}
+    for city,sentiments in citySentiment.items(): 
+        if sentiments and upvoteScore != 0:
+            # weighted avg sentment where theres more than one sentiment v alue total sentiment / upvote*number of sentence
+            resultSentiment[city] = round(sum(sentiments) / (abs(upvoteScore) * len(sentiments)), 3)
         else:
-            city_name = ""
+            resultSentiment[city] = 0.0
+        
+    return resultSentiment 
 
-    # Prepare document for Elasticsearch
-    post_doc = {
-        "type": "post",
-        "platform": "Reddit",
-        "city": city_name,
-        "sentiment": sentiment_score,
-        "text": cleaned_text,
-        "upvote": submission.score,
-        "createdOn": int(submission.created_utc),
-        "url": f"https://reddit.com{submission.permalink}",
-        "docId": submission.id
-    }
-    es.index(index="public-transport-sentiment", body=post_doc)
-
-    # Process comments of the submission
+def storeElastic(es,text,post,postType,sentiments, citiesBool,commentID=False)  -> str:
+    """
+    store data into elastic, docid base on its comment ID and post ID, if post does not mention city then consdier subreddit city 
+    """
     try:
-        submission.comments.replace_more(limit=None)
-    except Exception:
-        pass
-    for comment in submission.comments.list():
-        comment_text = getattr(comment, "body", "")
-        if not comment_text:
-            continue
-        cleaned_comment = clean_text(comment_text)
-        has_topic_c = match_topic(cleaned_comment)
-        has_city_c = city_contain(cleaned_comment) is not None
-        if not has_topic_c and not has_city_c:
-            continue
-        sentiment_score_c = analyze_text(cleaned_comment, analyzer)
-        city_name_c = city_contain(cleaned_comment)
-        if not city_name_c:
-            if task_team.lower() != "publictransport":
-                city_name_c = task_team
-            else:
-                city_name_c = ""
-        comment_doc = {
-            "type": "comment",
-            "platform": "Reddit",
-            "city": city_name_c,
-            "sentiment": sentiment_score_c,
-            "text": cleaned_comment,
-            "upvote": comment.score,
-            "createdOn": int(comment.created_utc),
-            "url": f"https://reddit.com{comment.permalink}",
-            "docId": comment.id
-        }
-        es.index(index="public-transport-sentiment", body=comment_doc)
+        count = 0 
+        if citiesBool:
+            print("storeElastic start, flush=True")
+            for city,sentiment in sentiments.items(): 
+                docId = (f"{commentID}_{city}_comment " if commentID else  f"{post.id}_{city}_{postType}").lower() 
+                doc = {"type": postType,
+                       "platform":"Reddit",                       
+                      "city": city.lower(),
+                      "sentiment":sentiment,
+                      "text": text,
+                      "upvote":post.score,
+                      "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
+                      "url":post.url,
+                }
+                es.create(index="trans-reddit-sentiment", id=docId, document=doc)
+                print(f"added {docId} {post.subreddit.display_name.lower()}", flush=True)
+                # print(json.dumps(doc,indent=4,sort_keys=True))
+        else:
+            count += 1
+            print("storeElastic start, flush=True")
+            docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
+            doc = {"type": postType,
+                   "platform":"Reddit",  
+                      "city": post.subreddit.display_name.lower(),
+                      "sentiment":sentiments,
+                      "text": text,
+                      "upvote":post.score,
+                      "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
+                      "url":post.url,
+                }  
+            es.create(index="trans-reddit-sentiment", id=docId, document=doc)
+            print(f"added {count} {docId} {post.subreddit.display_name.lower()}", flush=True)
+            # print(json.dumps(doc,indent=4,sort_keys=True))
+        return "ok"
+    except exceptions.ConflictError:
+        print(f"Document {post.id}_{post.subreddit.display_name.lower()} already exists, skipping...")
+        return "ok"
+    
+def saveLastPost(es, subredditName, postFullname) -> str:
+    """
+    Store last post details into elastic database to store later
+    """
+    docId = f"after-{subredditName}"
+    doc = {
+        "type": "harvest-flag",
+        "platform": "Reddit",
+        "city": subredditName.lower(),
+        "last": postFullname.lower(),
+        "updatedOn": datetime.now().isoformat()
+    }
+    print(f"store {docId}")
+    es.index(index="trans-harvest-details", id=docId, document=doc)
+    return "ok"
+
+def fetchLastPost(es, subredditName):
+    """
+    Fetch last post details
+    """
+    docId = f"last-{subredditName.lower()}"
+    print(f"fetch {docId}")
+    try:
+        doc = es.get(index="trans-harvest-details", id=docId)
+        return doc["_source"].get("last", None)
+    except exceptions.NotFoundError:
+        return None       
+ 
+def harvestSubreddit(es,redditCity, postLimits=10) -> str:
+    """
+    Harvest post and its comments and get the sentiment value
+    Fetch new posts each run. Use after or timestamp to get the next batch. Save the latest post ID it saw. 
+    keepign the code to run wihtout taking too long
+    """ 
+    with open("/secrets/default/elastic-secret/REDDIT_CLIENT_ID") as f:
+        clientID = f.read().strip()
+
+    with open("/secrets/default/elastic-secret/REDDIT_CLIENT_SECRET") as f:
+        clientSecret = f.read().strip() 
+    reddit = praw.Reddit(
+        client_id=clientID,
+        client_secret=clientSecret,
+        user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
+    )
+    subreddit = reddit.subreddit(redditCity) 
+    after = fetchLastPost(es, redditCity) 
+    
+    lastPost = None
+    for post in subreddit.new(limit=postLimits): 
+        print(post.url)
+        if after == post.fullname.lower():
+            #reach last scrapped post then break
+            break
+        text = cleanText(post.title + " " + post.selftext)
+        postCities = cityContain(text)
+
+        if postCities:
+            sentiment = sentimentPerCity(text,post.subreddit.display_name.lower(),post.score, postCities) 
+            storeElastic(es,text,post,"post",sentiment,True)
+        else: 
+            sentiment =  sentimentAnalyser.polarity_scores(text)['compound']  
+            storeElastic(es,text,post,"post",sentiment,False)
+            
+        post.comments.replace_more(limit=0) 
+        
+        for comment in post.comments.list():
+            commentText = cleanText(comment.body)
+            commentCities = cityContain(commentText)
+            # Skip if it's reply to another comment AND doesn't mention a city
+            if comment.parent_id.startswith("t1_") and not commentCities:
+                continue 
+            if commentCities: 
+                sentiment = sentimentPerCity(commentText,post.subreddit.display_name.lower(), comment.score, commentCities)
+                storeElastic(es,commentText,post,"comment",sentiment,True,comment.id)
+        
+        lastPost = post.fullname
+    if lastPost:
+        #Store last post details
+        saveLastPost(es,redditCity,lastPost)
+    return "ok"
+        
+        
+
 
 def main():
-    nltk.download('punkt')
+    """
+    Run harvest subreddit for all Cities, skip if we get an conflicterror
+    """
+    print("main() function started", flush=True) 
+    with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
+        es_username = f.read().strip()
 
-    # Initialize Redis (adjust host/port as needed)
-    redis_host = os.environ.get("REDIS_HOST", "redis")
-    redis_port = int(os.environ.get("REDIS_PORT", 6379))
-    r = redis.Redis(host=redis_host, port=redis_port, db=0)
+    with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
+        es_password = f.read().strip() 
+        
+    redisClient: redis.StrictRedis = redis.StrictRedis(
+        host='redis-headless.redis.svc.cluster.local',
+        socket_connect_timeout=5,
+        decode_responses=False
+    ) 
+    es = Elasticsearch(
+    hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
+    basic_auth=(es_username, es_password),verify_certs=False,ssl_show_warn=False)  
+     
 
-    # Initialize Reddit API (set your credentials via environment variables)
-    reddit = praw.Reddit(
-        client_id=os.getenv("REDDIT_CLIENT_ID"),
-        client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-        user_agent=os.getenv("REDDIT_USER_AGENT", "public-transport-sentiment")
-    )
-
-    # Initialize VADER sentiment analyzer
-    analyzer = SentimentIntensityAnalyzer()
-
-    queue_name = "trans:subreddit"
-    while True:
-        task_data = r.lpop(queue_name)
-        if not task_data:
-            time.sleep(5)
-            continue
-
-        try:
-            task = json.loads(task_data)
-        except json.JSONDecodeError:
-            continue
-
-        task_team = task.get("team", "")
-        limit = task.get("limit", 10)
-
-        # Determine subreddit name from task_team
-        subreddit_name = task_team
-        if not subreddit_name:
-            continue
-
-        try:
-            subreddit = reddit.subreddit(subreddit_name)
-            for submission in subreddit.new(limit=limit):
-                process_submission(submission, task_team, es, analyzer)
-        except Exception as e:
-            print(f"Error processing subreddit {subreddit_name}: {e}")
-
+    try:
+        city = redisClient.rpop("afl:subreddit")
+        if not city:
+            return "Queue empty", 200
+        job = json.loads(city)
+        harvestSubreddit(es, job["city"], postLimits=job["limit"])
+        print("job done", flush=True)
+        return f"Harvested {job['city']}", 200
+    except ApiError as e:
+        return json.dumps({"error": str(e)}), 500   
 
