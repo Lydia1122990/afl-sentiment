@@ -1,10 +1,4 @@
 flask
 elasticsearch8==8.14.0
-typing
 requests
-matplotlib
-seaborn
-pandas
 numpy
-urllib3
-
