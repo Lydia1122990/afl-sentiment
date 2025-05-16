@@ -11,10 +11,10 @@ from datetime import datetime
 
 nltk.download('punkt')
 
-# Load environment variables - test
+# Load environment variables
 load_dotenv()
 
-# AFL teams and nicknames
+# AFL teams and their nicknames
 TEAM = {
     "adelaidefc": ["adelaide crows", "crows", "crows reserves", "whites", "white noise", "kuwarna"],
     "brisbanelions": ["brisbane lions", "maroons", "gorillas", "lions"],
@@ -34,34 +34,28 @@ TEAM = {
     "sydneyswans": ["sydney swans", "swans", "swannies", "bloods"],
     "westcoasteagles": ["west coast eagles", "eagles"],
     "westernbulldogs": ["western bulldogs", "dogs", "doggies", "scraggers", "the scray", "footscray", "tricolours"],
-    "tasmanianafl": ["tasmania football club", "devils", "tassie"]
 }
 
-def get_afl_teams():
-    return [
-        'Adelaide Crows', 'Brisbane Lions', 'Carlton Blues', 
-        'Collingwood Magpies', 'Essendon Bombers', 'Fremantle Dockers',
-        'Geelong Cats', 'Gold Coast Suns', 'GWS Giants', 'Hawthorn Hawks',
-        'Melbourne Demons', 'North Melbourne Kangaroos', 'Port Adelaide Power',
-        'Richmond Tigers', 'St Kilda Saints', 'Sydney Swans',
-        'West Coast Eagles', 'Western Bulldogs'
-    ]
-
+ALLOWED_TEAMS = list(TEAM.keys())
 teamNickname = {alias.lower(): team for team, nicknames in TEAM.items() for alias in nicknames}
-
 sentimentAnalyser = SentimentIntensityAnalyzer()
+
+def get_afl_teams():
+    return list(TEAM.keys())
 
 def cleanEmoji(text):
     return emoji.demojize(text).replace("::", " ").replace(":", "").replace("_", " ")
 
-def cleanText(text):
-    url = 'http://localhost:8888/text-clean'
-    try:
-        response = requests.post(url, json={"text": text})
-        return response.json().get("cleanedText", text)
-    except Exception as e:
-        print(f"Text clean service error: {e}")
-        return text
+
+def cleanText(text)  -> str:
+    """
+    Send text to fission fucntion text-clean for cleaning and return cleaned text
+    """
+    url="http://localhost:8888/text-clean"
+    payload = {"text":text}
+    response = requests.post(url,json=payload)
+    return response.json()["cleanedText"]
+
 
 def teamMentioned(text):
     return list({team for alias, team in teamNickname.items() if alias in text.lower()})
@@ -76,38 +70,49 @@ def sentimentPerTeam(text, upvoteScore=1):
                 teamSentiment[team].append(sentiment * abs(upvoteScore))
     resultSentiment = {}
     for team, sentiments in teamSentiment.items():
-        if sentiments:
+        if sentiments and team in ALLOWED_TEAMS:
             resultSentiment[team] = round(sum(sentiments) / len(sentiments), 3)
     return resultSentiment
 
-def harvest_afl_sentiment(keyword: str, limit: int = 1000):
+def harvest_afl_sentiment(keyword: str, limit: int = 3000):
     client = Client()
     client.login(os.getenv("BLUESKY_CLIENT_ID"), os.getenv("BLUESKY_CLIENT_PASSWORD"))
 
     posts = []
     cursor = None
 
-    print(f"Harvesting posts for {keyword}...")
+    print(f"🚀 Harvesting posts for {keyword}...")
 
     while len(posts) < limit:
-        harvest_limit = min(100, limit - len(posts))
+        harvest_limit = min(200, limit - len(posts))
         try:
             response = client.app.bsky.feed.search_posts(
                 params=models.AppBskyFeedSearchPosts.Params(q=keyword, limit=harvest_limit, cursor=cursor)
             )
             if not response.posts:
                 break
+
             for post in response.posts:
                 try:
                     raw_text = post.record.text
                     text = cleanText(cleanEmoji(raw_text))
                     teams = teamMentioned(text)
-                    upvote = getattr(post, 'likeCount', 1)
+
+                    try:
+                        detail = client.app.bsky.feed.get_post_thread(
+                            params=models.AppBskyFeedGetPostThread.Params(uri=post.uri)
+                        )
+                        upvote = getattr(detail.thread.post, 'likeCount', 1)
+                        if upvote is None:
+                            upvote = 1
+                    except Exception as e:
+                        print(f"⚠️ Failed to fetch full post {post.uri}: {e}")
+                        upvote = 1
+
                     if teams:
                         sentiments = sentimentPerTeam(text, upvote)
                         for team, sentiment in sentiments.items():
                             posts.append({
-                                '_index': 'afl-sentiment',
                                 '_id': f"{post.uri.split('/')[-1]}_{team}_comment",
                                 'platform': 'Bluesky',
                                 'type': 'comment',
@@ -121,7 +126,6 @@ def harvest_afl_sentiment(keyword: str, limit: int = 1000):
                     else:
                         sentiment = sentimentAnalyser.polarity_scores(text)['compound'] * abs(upvote)
                         posts.append({
-                            '_index': 'afl-sentiment',
                             '_id': f"{post.uri.split('/')[-1]}_{keyword}_comment",
                             'platform': 'Bluesky',
                             'type': 'comment',
@@ -132,14 +136,18 @@ def harvest_afl_sentiment(keyword: str, limit: int = 1000):
                             'createdOn': post.indexed_at,
                             'url': f"https://bsky.app/profile/{post.author.handle}/post/{post.uri.split('/')[-1]}",
                         })
+
                 except Exception as e:
                     print(f"⚠️ Skipped post due to error: {e}")
+
             cursor = response.cursor
             if not cursor:
                 break
+
         except Exception as e:
             print(f"❌ Error during harvest: {e}")
             break
+
         time.sleep(2)
 
     print(f"✅ Results for {keyword}: {len(posts)} posts harvested")

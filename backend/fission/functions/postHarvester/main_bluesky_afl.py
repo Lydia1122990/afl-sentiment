@@ -1,5 +1,5 @@
-from sentiment_bluesky import harvest_afl_sentiment, get_afl_teams
-from es_utils import save_to_elasticsearch
+from sentimentPerTeam.sentiment_bluesky import harvest_afl_sentiment, get_afl_teams
+from esConnect.es_utils import save_to_elasticsearch
 
 import os
 import time
@@ -46,13 +46,13 @@ for team in teams:
         team_posts.append((doc_id, post_cleaned))
 
         # Save to Elasticsearch
-        save_to_elasticsearch([post_cleaned], index_name="afl_bluesky_sentiment", doc_id=doc_id)
+        save_to_elasticsearch([post_cleaned], index_name="afl_bluesky_sentiment-22", doc_id=doc_id)
 
 # 更新 seen_uris 文件
 save_seen_uris(new_uris)
 
 # 保存至 Elasticsearch (bulk)
-save_to_elasticsearch(all_posts, index_name="afl_bluesky_sentiment")
+save_to_elasticsearch(all_posts, index_name="afl_bluesky_sentiment-22")
 
 # 保存为本地 CSV / JSON
 os.makedirs("results", exist_ok=True)

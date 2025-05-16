@@ -1,0 +1,4 @@
+atproto
+elasticsearch8
+flask
+redis
