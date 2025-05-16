@@ -102,5 +102,8 @@ def main() -> str:
 
             redisClient.rpush("afl:subreddit", json.dumps(job))
             print(f"Enqueued {team} with limit {limit} (count = {postCount})",flush=True)
+            
+            
+    
 
     return 'ok' 

@@ -9,6 +9,7 @@ from nltk.tokenize import sent_tokenize
 import requests  
 import json
 import redis 
+from flask import current_app
 
 # fission package create --spec --name aflharvester-pkg --source ./functions/aflHarvester/aflHarvester.py --source ./functions/aflHarvester/requirements.txt --env python39 
 # fission fn create --spec --name aflharvester --pkg aflharvester-pkg --env python39 --entrypoint aflHarvester.main --specializationtimeout 180 --secret elastic-secret 
@@ -83,6 +84,27 @@ def cleanText(text)  -> str:
     return response.json()["cleanedText"]
 
 
+def addElastic(docID,text,doc):
+    """
+    Send data to fission function addelastic to store into elastic
+    """
+    url='http://router.fission/addelastic'
+    payload = {"indexDocument":text,"docID":docID,"doc":doc} 
+    requests.post(url,json=payload) 
+    return "ok"
+
+def checkPost(docID,indexDoc):
+    """
+    Check post ID see if exist in elastic index
+    """
+    url='http://router.fission/checkelastic'
+    payload = {
+            "indexDocument": indexDoc,
+            "docID": docID, 
+        }
+    res = requests.post(url,json=payload)
+    return res.json()["found"]
+
 def teamMentioned(text, teams=teamNickname)  -> list:
     """
     Found team mentioned in the team
@@ -128,10 +150,14 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
     try:
         count = 0 
         if teamsBool:
-            
             print("storeElastic start, flush=True")
             for team,sentiment in sentiments.items(): 
                 docId = (f"{commentID}_{team}_comment " if commentID else  f"{post.id}_{team}_{postType}").lower() 
+                if checkPost(docId,"afl-sentiment"):
+                    current_app.logger.info(
+                        f'Skipped {docId} as it exists ' 
+                    )
+                    break
                 doc = {"type": postType,
                        "platform":"Reddit",                       
                       "team": team.lower(),
@@ -144,10 +170,14 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                 es.create(index="afl-sentiment", id=docId, document=doc)
                 print(f"added {docId} {post.subreddit.display_name.lower()}", flush=True)
                 # print(json.dumps(doc,indent=4,sort_keys=True))
-        else:
-            count += 1
+        else: 
             print("storeElastic start, flush=True")
             docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
+            if checkPost(docId,"afl-sentiment"):
+                current_app.logger.info(
+                    f'Skipped {docId} as it exists ' 
+                )
+                return "ok"
             doc = {"type": postType,
                    "platform":"Reddit",  
                       "team": post.subreddit.display_name.lower(),
@@ -164,35 +194,8 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
     except exceptions.ConflictError:
         print(f"Document {post.id}_{post.subreddit.display_name.lower()} already exists, skipping...")
         return "ok"
-    
-def saveLastPost(es, subredditName, postFullname) -> str:
-    """
-    Store last post details into elastic database to store later
-    """
-    docId = f"after-{subredditName}"
-    doc = {
-        "type": "harvest-flag",
-        "platform": "Reddit",
-        "team": subredditName.lower(),
-        "last": postFullname.lower(),
-        "updatedOn": datetime.now().isoformat()
-    }
-    print(f"store {docId}")
-    es.index(index="harvest-details", id=docId, document=doc)
-    return "ok"
+   
 
-def fetchLastPost(es, subredditName):
-    """
-    Fetch last post details
-    """
-    docId = f"last-{subredditName.lower()}"
-    print(f"fetch {docId}")
-    try:
-        doc = es.get(index="harvest-details", id=docId)
-        return doc["_source"].get("last", None)
-    except exceptions.NotFoundError:
-        return None       
- 
 def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
     """
     Harvest post and its comments and get the sentiment value
@@ -209,15 +212,10 @@ def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
         client_secret=clientSecret,
         user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
     )
-    subreddit = reddit.subreddit(redditTeam) 
-    after = fetchLastPost(es, redditTeam) 
+    subreddit = reddit.subreddit(redditTeam)  
     
-    lastPost = None
     for post in subreddit.new(limit=postLimits): 
-        print(post.url)
-        if after == post.fullname.lower():
-            #reach last scrapped post then break
-            break
+        print(post.url) 
         text = cleanText(post.title + " " + post.selftext)
         postTeams = teamMentioned(text)
 
@@ -238,12 +236,7 @@ def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
                 continue 
             if commentTeams: 
                 sentiment = sentimentPerTeam(commentText,post.subreddit.display_name.lower(), comment.score, commentTeams)
-                storeElastic(es,commentText,post,"comment",sentiment,True,comment.id)
-        
-        lastPost = post.fullname
-    if lastPost:
-        #Store last post details
-        saveLastPost(es,redditTeam,lastPost)
+                storeElastic(es,commentText,post,"comment",sentiment,True,comment.id) 
     return "ok"
         
         
