@@ -1,0 +1,52 @@
+include:
+- ./functions/bluesky_fan/blueskyfan.py
+kind: ArchiveUploadSpec
+name: functions-bluesky-fan-blueskyfan-py-RIAb
+
+---
+apiVersion: fission.io/v1
+kind: Package
+metadata:
+  creationTimestamp: null
+  name: fanbluesky4-c5d07edb-aaab-4866-b147-225da8acc1ee
+spec:
+  deployment:
+    checksum: {}
+    type: url
+    url: archive://functions-bluesky-fan-blueskyfan-py-RIAb
+  environment:
+    name: python39
+    namespace: ""
+  source:
+    checksum: {}
+status:
+  buildstatus: none
+  lastUpdateTimestamp: "2025-05-17T12:04:46Z"
+
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  creationTimestamp: null
+  name: fanbluesky4
+spec:
+  InvokeStrategy:
+    ExecutionStrategy:
+      ExecutorType: poolmgr
+      MaxScale: 0
+      MinScale: 0
+      SpecializationTimeout: 120
+      TargetCPUPercent: 0
+    StrategyType: execution
+  concurrency: 500
+  environment:
+    name: python39
+    namespace: ""
+  functionTimeout: 60
+  idletimeout: 120
+  package:
+    packageref:
+      name: fanbluesky4-c5d07edb-aaab-4866-b147-225da8acc1ee
+      namespace: ""
+  requestsPerPod: 1
+  resources: {}

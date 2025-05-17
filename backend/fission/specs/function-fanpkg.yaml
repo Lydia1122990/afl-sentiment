@@ -2,7 +2,7 @@ apiVersion: fission.io/v1
 kind: Function
 metadata:
   creationTimestamp: null
-  name: blueskyfan
+  name: fanpkg
 spec:
   InvokeStrategy:
     ExecutionStrategy:
@@ -14,14 +14,14 @@ spec:
     StrategyType: execution
   concurrency: 500
   environment:
-    name: python39
+    name: python39x
     namespace: ""
   functionTimeout: 60
   idletimeout: 120
   package:
     functionName: blueskyfan.main
     packageref:
-      name: blueskyfan-pkg
+      name: fanpkg
       namespace: ""
   requestsPerPod: 1
   resources: {}
