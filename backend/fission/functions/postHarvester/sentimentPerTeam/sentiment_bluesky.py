@@ -46,16 +46,14 @@ def get_afl_teams():
 def cleanEmoji(text):
     return emoji.demojize(text).replace("::", " ").replace(":", "").replace("_", " ")
 
-
-def cleanText(text)  -> str:
-    """
-    Send text to fission fucntion text-clean for cleaning and return cleaned text
-    """
-    url="http://localhost:8888/text-clean"
-    payload = {"text":text}
-    response = requests.post(url,json=payload)
-    return response.json()["cleanedText"]
-
+def cleanText(text):
+    url = 'http://localhost:8888/text-clean'
+    try:
+        response = requests.post(url, json={"text": text})
+        return response.json().get("cleanedText", text)
+    except Exception as e:
+        print(f"⚠️ Text clean service error: {e}")
+        return text
 
 def teamMentioned(text):
     return list({team for alias, team in teamNickname.items() if alias in text.lower()})

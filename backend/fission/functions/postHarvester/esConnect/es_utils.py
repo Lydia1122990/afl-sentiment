@@ -1,23 +1,29 @@
 from elasticsearch import Elasticsearch
-from dotenv import load_dotenv
-import os
-import ssl
+import traceback
 
-load_dotenv()
+# 从 Kubernetes Secret 中读取 Elasticsearch 凭证
+try:
+    with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
+        es_username = f.read().strip()
 
-# Use the working credentials
-es_password = "aeyi9Ok7raengoNgahlaK4neoghooz8O"  # Or set this in your .env file
-es_username = "elastic"
-#test 
-print(f"Connecting to Elasticsearch at https://localhost:9200")
+    with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
+        es_password = f.read().strip()
+except Exception as e:
+    print(f"Error reading secret files: {e}")
+    traceback.print_exc()
+    import sys
+    sys.exit(1)
+
+# 测试连接信息
+print(f"Connecting to Elasticsearch at https://elasticsearch-master.elastic.svc.cluster.local:9200")
 print(f"Username: {es_username}")
 print(f"Password length: {len(es_password) if es_password else 0}")
 
 try:
     # For Elasticsearch 8.x
     es = Elasticsearch(
-        hosts=["https://localhost:9200"],
-        basic_auth=(es_username, es_password),  # Use basic_auth for ES 8.x
+        hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
+        basic_auth=(es_username, es_password),
         verify_certs=False,
         ssl_show_warn=False
     )
@@ -28,7 +34,6 @@ try:
 
 except Exception as e:
     print(f"Error connecting to Elasticsearch: {e}")
-    import traceback
     traceback.print_exc()
     import sys
     sys.exit(1)
@@ -67,7 +72,6 @@ def save_to_elasticsearch(posts, index_name="afl_bluesky_sentiment", doc_id=None
 
             if error_count == 1:
                 print(f"First error details: {e}")
-                import traceback
                 traceback.print_exc()
 
     print(f"Indexing complete: {success_count} successes, {error_count} failures")

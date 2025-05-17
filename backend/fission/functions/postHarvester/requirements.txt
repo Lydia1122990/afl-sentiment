@@ -1,4 +1,8 @@
+elasticsearch
+requests
+python-dotenv
 atproto
-elasticsearch8
-flask
-redis
+nltk
+vaderSentiment
+emoji
+pandas

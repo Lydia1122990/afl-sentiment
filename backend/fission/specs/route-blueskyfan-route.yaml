@@ -2,21 +2,21 @@ apiVersion: fission.io/v1
 kind: HTTPTrigger
 metadata:
   creationTimestamp: null
-  name: health
+  name: blueskyfan-route
 spec:
   createingress: true
   functionref:
     functionweights: null
-    name: health
+    name: blueskyfan
     type: name
   host: ""
   ingressconfig:
     annotations: null
     host: '*'
-    path: /health
+    path: /blueskyfan
     tls: ""
   method: ""
   methods:
-  - GET
+  - POST
   prefix: ""
-  relativeurl: /health
+  relativeurl: /blueskyfan

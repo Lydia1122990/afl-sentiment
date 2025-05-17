@@ -1,1 +1,2 @@
 */.env
+backend/.env # 加到忽略文件中
