@@ -1,18 +1,16 @@
 from flask import current_app, request,jsonify
 from elasticsearch8 import Elasticsearch 
 from typing import Dict, List, Any
-import json 
-# fission package create --spec --name checkelastic-pkg --source ./functions/checkelastic/__init__.py --source ./functions/checkelastic/checkelastic.py --source ./functions/checkelastic/requirements.txt --source ./functions/checkelastic/build.sh --env python39 --buildcmd './build.sh'
-# fission fn create --spec --name checkelastic --pkg checkelastic-pkg --env python39 --entrypoint checkelastic.main --specializationtimeout 180 --secret elastic-secret 
-
-# fission route create --spec --name checkelastic-route --function checkelastic --url /checkelastic --method POST --createingress
- 
+import json  
 
 def main():
+    """
+    Check elasticsaerch databse to see if ID exisit if so return True else return False
+    """
     try:
         requestData: List[Dict[str, Any]] = request.get_json(force=True)
         
-        current_app.logger.info(f'Processing {requestData["docID"]} - {requestData["indexDocument"]} observations')   
+        current_app.logger.info(f'=== checkelast: Processing {requestData["docID"]} - {requestData["indexDocument"]} ===')   
 
         if not requestData["docID"]:
             return "Missing index ID parameter", 400
@@ -30,7 +28,13 @@ def main():
             basic_auth=(es_username, es_password)
         ) 
         exists = es.get(index=requestData["indexDocument"], id=requestData["docID"])
+        current_app.logger.info(
+                    f'=== checkelast: ID found in {requestData["indexDocument"]} ===' 
+                )
         return json.dumps({"found": bool(exists)})
-    except Exception as e:
-        print("Error in check elastic function ",str(e),flush=True)
-        return {"error":str(e)},500
+    except Exception as e: 
+        current_app.logger.info(
+                    f'=== checkelastic:Error in searching for ID in {requestData["indexDocument"]} ==='
+                    f'=== checkelastic:ID not found ===' 
+                )
+        return json.dumps({"found": False})

@@ -2,19 +2,33 @@ import praw
 from elasticsearch8 import Elasticsearch, exceptions,ApiError  
 from datetime import datetime   
 import json
+from flask import current_app 
+import requests  
+ 
 
-# fission package create --spec --name aflsubred-pkg --source ./functions/aflSubRed/aflSubRed.py --source ./functions/aflSubRed/requirements.txt --env python39 
-# fission fn create --spec --name aflsubred --pkg aflsubred-pkg --env python39 --entrypoint aflSubRed.main --secret elastic-secret --configmap shared-data 
-# fission route create --spec --name aflsubred-route --function aflsubred --url /aflsubred --method POST --createingress
-# run every 12 hours
-# fission timer create \
-#   --spec \
-#   --name aflsubred-timer \
-#   --function aflsubred \
-#   --cron "0 */12 * * *"
-  
+
+def addElastic(docID,indexText,doc):
+    """
+    Send data to fission function addelastic to store into elastic
+    """
+    print("=== addElastic start ===", flush=True)
+    url='http://router.fission/addelastic'
+    payload = {"indexDocument":indexText,"docID":docID,"doc":doc}  
+    try:
+        response = requests.post(url, json=payload, timeout=5)
+        current_app.logger.info(f'=== aflSubRed: AddElastic : Response: {response.status_code} {response.text} ===') 
+    except Exception as e:
+        current_app.logger.info(f'=== aflSubRed: AddElastic : Exception in addElastic POST: {str(e)} ===')   
+    return "ok"
+
+
 
 def main():
+    """
+    Scrape subreddit suscribers and store into elastic
+    
+    """
+    current_app.logger.info(f'=== aflSubRed: Initialise ===')  
     with open("/secrets/default/elastic-secret/REDDIT_CLIENT_ID") as f:
         clientID = f.read().strip()
 
@@ -26,22 +40,11 @@ def main():
         client_secret=clientSecret,
         user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
     )
-    
-    with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
-        es_username = f.read().strip()
-
-    with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
-        es_password = f.read().strip() 
-        
-    es = Elasticsearch(
-    hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
-    basic_auth=(es_username, es_password),verify_certs=False,ssl_show_warn=False) 
-    
+     
     
     with open(f'/configs/default/shared-data/TEAM', 'r') as f:
         teams = list(json.loads(f.read()).keys())  
-    try:
-        print(teams,flush=True)
+    try: 
         for team in teams: 
             subs = reddit.subreddit(team).subscribers 
             retrieveDate = datetime.now().isoformat().replace(":", "-")
@@ -51,9 +54,9 @@ def main():
                     "subscribers": subs,
                     "retrieveDate": retrieveDate
                 }
-            es.create(index="afl-fans", id=docID, document=doc)
+            addElastic(docID,"afl-fans",doc) 
         return "ok"
-    except exceptions.ConflictError:
-        print(f"Document already exists, skipping...")
+    except ApiError as e:
+        current_app.logger.info(f'=== aflSubRed: Error occur: {str(e)} ===') 
         return "ok"
         

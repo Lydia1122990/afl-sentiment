@@ -4,21 +4,15 @@ from typing import Dict, List, Any
 from flask import current_app, request
 from elasticsearch8 import Elasticsearch
 
-# fission package create --spec --name elastic-pkg --source ./functions/addelastic/addelastic.py --source ./functions/addelastic/requirements.txt --env python39 
-# fission fn create --spec --name addelastic --pkg elastic-pkg --env python39 --entrypoint addelastic.main --specializationtimeout 180 --secret elastic-secret 
-# fission route create --spec --name addelastic-route --function addelastic --url /addelastic --method POST --createingress
- 
-
-
 def main() -> str:
-    """Process and index weather observation data into Elasticsearch.
-
+    """
+    Recsive data, index and ID via HTTP and store data into elastic
+    
     Handles:
     - Elasticsearch client initialization with security credentials through secrets
     - Suppression of SSL warnings for self-signed certificates
-    - Bulk indexing of observation records
-    - Document ID generation using station ID and timestamp
-    - Request payload validation and logging
+    - Document ID generation using ID
+    - Save data into elasticsearch 
 
     Returns:
         'ok' on successful processing of all observations
@@ -28,6 +22,8 @@ def main() -> str:
         ElasticsearchException: For indexing failures
     """
     # Initialize Elasticsearch client
+    current_app.logger.info("=== addelastic: Elasticsearch client initialized ===") 
+
     with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
         es_username = f.read().strip()
 
@@ -39,24 +35,25 @@ def main() -> str:
         verify_certs=False,
         ssl_show_warn=False,
         basic_auth=(es_username, es_password)
-    )
-
-    # Validate and parse request payload
-    requestData: List[Dict[str, Any]] = request.get_json(force=True)
-    current_app.logger.info(f'Processing {requestData["index"]} observations')
+    )  
+      
+    requestData: List[Dict[str, Any]] = request.get_json(force=True) 
 
     # Index each observation
     docID: str = f'{requestData["docID"]}' 
-
     index_response: Dict[str, Any] = es.index(
         index=requestData["indexDocument"],
         id=docID,
         body=requestData["doc"]
-    )
+    ) 
+    current_app.logger.info(f'=== addelastic: Index response: {index_response} ===')
+    current_app.logger.info(f'=== addelastic: Processing {requestData.get("indexDocument", "<missing index>")} ===')
 
+   
     current_app.logger.info(
-        f'Indexed {requestData["index"]} {docID} - '
+        f'Indexed {requestData.get("indexDocument")} {docID} - '
         f'Version: {index_response["_version"]}'
     )
+
 
     return 'ok'

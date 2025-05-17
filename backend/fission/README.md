@@ -1,40 +1,63 @@
-Can use for debugging
+# Debugging & Initalisation
 
 Check package
-``fission pkg info --name <package name>``
 
-Creating Specs 
+```shell
+fission pkg info --name <package name>
+```
+
+Creating Specs for environment
 
 
-``fission specs init`` 
+```shell
+fission specs init
+``` 
 
 Create Python 3.9 environment 
 
-``fission env create --spec --name python39 --image fission/python-env-3.9 --builder fission/python-builder-3.9``
+```shell
+fission env create --spec --name python39 --image fission/python-env-3.9 --builder fission/python-builder-3.9
+```
 
 Check if there's errors
 
-``fission spec validate``
+```shell
+fission spec validate
+```
 
 If no errors can run below to apply specs to cluster 
 
-``fission spec apply --specdir fission/specs --wait``
+```shell
+fission spec apply --specdir fission/specs --wait
+```
 
 or if you want to apply single file for example
 
-``kubectl apply -f ./specs/env-python39.yaml.yaml``
-
-Creating function for textClean
-```yaml
-fission package create --spec --name textclean-pkg --source ./functions/textClean/textClean.py --source ./functions/textClean/requirements.txt --env python39 
-
-fission fn create --spec --name textclean --pkg textclean-pkg --env python39 --entrypoint textClean.main
-
-fission route create --spec --name cleantext-route --function textclean --method POST --url /text-clean --createingress
+```shell
+kubectl apply -f ./specs/{filename}.yaml
 ``` 
 
 To apply all specificiation in specs folder
 
-```
+```shell
 fission spec apply --specdir specs --wait --force
+```
+## Start port forward
+
+### Elasticsearch
+
+```shell
+kubectl port-forward service/elasticsearch-master -n elastic 9200:9200
+```
+### Fission route
+```shell
+kubectl port-forward service/router -n fission 9090:80
+```
+### Kibana
+```shell
+kubectl port-forward service/kibana-kibana -n elastic 5601:5601
+```
+### Redis
+```shell
+kubectl port-forward service/redis-insight --namespace redis 5540:5540
 ```
