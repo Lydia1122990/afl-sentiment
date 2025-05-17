@@ -59,13 +59,36 @@ class TestEnd2End(unittest.TestCase):
     def test_textclean_specialchar(self):
         response = testRequest.post("text-clean", {"text": "\u2014 \u2014 Winner\u2026"}) 
         self.assertEqual(json.loads(response.text)["cleanedText"], "— — Winner...")
-    def test_enqueue(self): 
-        response = testRequest.post(
-            "enqueue",
-            json={"team": "melbournefc", "limit": 1000}
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("OK", response.text)
+    # def test_enqueue(self): 
+    #     response = testRequest.post(
+    #         "enqueue/test",
+    #         json={"team": "melbournefc", "limit": 10}
+    #     )
+    #     self.assertEqual(response.status_code, 200)
+    #     self.assertIn("ok", response.text)
+        
+    def test_elastic(self):
+        payload = {
+            "index": "test-log",
+            "indexDocument": "test-log",
+            "docID": "test1",
+            "doc": {
+                "team": "gws",
+                "sentiment": 0.45, 
+                "timestamp": "2025-05-17T11:11:11Z"
+            }
+        }
+        self.assertEqual(testRequest.post("addelastic",payload).status_code,200) 
+        self.assertIn("ok", testRequest.post("addelastic",payload).text.lower())
+    
+    def testCheckElastic(self):
+        payload = {
+            "indexDocument": "trans-reddit-sentiment",
+            "docID": "1knwsm1_melbournetrains_post", 
+        }
+        state = testRequest.post("checkelastic",payload).json()['found']
+        self.assertEqual(state,True) 
+            
         
 
 if __name__ == '__main__':

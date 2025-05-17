@@ -9,40 +9,7 @@ from nltk.tokenize import sent_tokenize
 import requests  
 import json
 import redis 
-
-# fission package create --spec --name aflharvester-pkg --source ./functions/aflHarvester/aflHarvester.py --source ./functions/aflHarvester/requirements.txt --env python39 
-# fission fn create --spec --name aflharvester --pkg aflharvester-pkg --env python39 --entrypoint aflHarvester.main --specializationtimeout 180 --secret elastic-secret 
-# fission route create --spec --name afl-harvester-route --function aflharvester --url /aflharvester --method POST --createingress
- 
-# (
-#     cd fission
-#     fission mqtrigger create --name afl-harvesting \
-#     --spec \
-#     --function aflharvester \
-#     --mqtype redis \
-#     --mqtkind keda \
-#     --topic afl:subreddit \
-#     --errortopic errors \
-#     --maxretries 3 \
-#     --metadata address=redis-headless.redis.svc.cluster.local:6379 \
-#     --metadata listLength=100 \
-#     --metadata listName=afl:subreddit
-# )  
-
-# fission timer create \
-#   --name aflharvest-timer \
-#   --spec \
-#   --function aflharvester \
-#   --cron "*/5 * * * *" 
-  
-#   curl -X PUT "http://elasticsearch-master.elastic.svc.cluster.local:9200/afl-sentiment" \
-#   -H 'Content-Type: application/json' \
-#   -u elastic:aeyi9Ok7raengoNgahlaK4neoghooz8O \
-#   -k
-#   curl -X PUT "http://elasticsearch-master.elastic.svc.cluster.local:9200/harvest-details" \
-#   -H 'Content-Type: application/json' \
-#   -u elastic:aeyi9Ok7raengoNgahlaK4neoghooz8O \
-#   -k
+from flask import current_app 
 
 
 sentimentAnalyser = SentimentIntensityAnalyzer()
@@ -83,6 +50,32 @@ def cleanText(text)  -> str:
     return response.json()["cleanedText"]
 
 
+def addElastic(docID,indexText,doc):
+    """
+    Send data to fission function addelastic to store into elastic
+    """ 
+    url='http://router.fission/addelastic'
+    payload = {"indexDocument":indexText,"docID":docID,"doc":doc}  
+    try:
+        response = requests.post(url, json=payload, timeout=5)
+        current_app.logger.info(f'=== aflHarvester: AddElastic response: {response.status_code} {response.text} ===')  
+    except Exception as e:
+        current_app.logger.info(f'=== aflHarvester: Exception in addElastic POST: {str(e)} ===')   
+     
+    return "ok"
+
+def checkPost(docID,indexDoc):
+    """
+    Check post ID see if exist in elastic index
+    """
+    url='http://router.fission/checkelastic'
+    payload = {
+            "indexDocument": indexDoc,
+            "docID": docID, 
+        }
+    res = requests.post(url,json=payload) 
+    return res.json()["found"]
+
 def teamMentioned(text, teams=teamNickname)  -> list:
     """
     Found team mentioned in the team
@@ -93,7 +86,7 @@ def teamMentioned(text, teams=teamNickname)  -> list:
             foundTeam.add(team)
     return list(foundTeam)
 
-def sentimentPerTeam(text,postSub, upvoteScore=1, teams=TEAM):
+def sentimentPerTeam(text,postSub, upvoteScore=1, teams=TEAM) -> dict:
     """
     Get total weighted sentiment per team , if team is not mentioned in posts then assumed its related to subredit team
     """
@@ -123,15 +116,21 @@ def sentimentPerTeam(text,postSub, upvoteScore=1, teams=TEAM):
 
 def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -> str:
     """
-    store data into elastic, docid base on its comment ID and post ID, if post does not mention team then consdier subreddit team 
+    store data into elastic, docid base on its comment ID and post ID, if post does not mention team then consider subreddit team 
     """
     try:
-        count = 0 
         if teamsBool:
-            
-            print("storeElastic start, flush=True")
             for team,sentiment in sentiments.items(): 
                 docId = (f"{commentID}_{team}_comment " if commentID else  f"{post.id}_{team}_{postType}").lower() 
+                
+                if checkPost(docId,"afl-testing"):
+                    current_app.logger.info(
+                        f'Skipped {docId} as it exists ' 
+                    )
+                    return "exist"
+                current_app.logger.info(
+                    f'Processing {docId} successful' 
+                ) 
                 doc = {"type": postType,
                        "platform":"Reddit",                       
                       "team": team.lower(),
@@ -141,13 +140,20 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
                 }
-                es.create(index="afl-sentiment", id=docId, document=doc)
-                print(f"added {docId} {post.subreddit.display_name.lower()}", flush=True)
-                # print(json.dumps(doc,indent=4,sort_keys=True))
-        else:
-            count += 1
-            print("storeElastic start, flush=True")
+                addElastic(docId,"afl-sentiment",doc) 
+                current_app.logger.info(
+                    f'Stored {docId} successful' 
+                ) 
+        else: 
             docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
+            if checkPost(docId,"afl-testing"):
+                current_app.logger.info(
+                    f'Skipped {docId} as it exists ' 
+                )
+                return "exist"
+            current_app.logger.info(
+                        f'Storing {docId}' 
+                    )
             doc = {"type": postType,
                    "platform":"Reddit",  
                       "team": post.subreddit.display_name.lower(),
@@ -156,49 +162,23 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                       "upvote":post.score,
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
-                }  
-            es.create(index="afl-sentiment", id=docId, document=doc)
-            print(f"added {count} {docId} {post.subreddit.display_name.lower()}", flush=True)
-            # print(json.dumps(doc,indent=4,sort_keys=True))
+                }   
+            addElastic(docId,"afl-sentiment",doc)
+            current_app.logger.info(
+                    f'Stored {docId} successful' 
+                ) 
         return "ok"
-    except exceptions.ConflictError:
-        print(f"Document {post.id}_{post.subreddit.display_name.lower()} already exists, skipping...")
+    except ApiError as e:
+        current_app.logger.info(f'=== aflHarvester: {e} occur when processing {post.id}_{post.subreddit.display_name.lower()} ===') 
         return "ok"
-    
-def saveLastPost(es, subredditName, postFullname) -> str:
-    """
-    Store last post details into elastic database to store later
-    """
-    docId = f"after-{subredditName}"
-    doc = {
-        "type": "harvest-flag",
-        "platform": "Reddit",
-        "team": subredditName.lower(),
-        "last": postFullname.lower(),
-        "updatedOn": datetime.now().isoformat()
-    }
-    print(f"store {docId}")
-    es.index(index="harvest-details", id=docId, document=doc)
-    return "ok"
+   
 
-def fetchLastPost(es, subredditName):
-    """
-    Fetch last post details
-    """
-    docId = f"last-{subredditName.lower()}"
-    print(f"fetch {docId}")
-    try:
-        doc = es.get(index="harvest-details", id=docId)
-        return doc["_source"].get("last", None)
-    except exceptions.NotFoundError:
-        return None       
- 
-def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
+def harvestSubreddit(redditTeam, postLimits=10) -> str:
     """
     Harvest post and its comments and get the sentiment value
-    Fetch new posts each run. Use after or timestamp to get the next batch. Save the latest post ID it saw. 
-    keepign the code to run wihtout taking too long
+    Fetch new posts each run. Check if post exist in index if it does break function early and move next.
     """ 
+    current_app.logger.info(f'=== aflHarvester: Initialise Reddit ===')
     with open("/secrets/default/elastic-secret/REDDIT_CLIENT_ID") as f:
         clientID = f.read().strip()
 
@@ -209,24 +189,24 @@ def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
         client_secret=clientSecret,
         user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
     )
-    subreddit = reddit.subreddit(redditTeam) 
-    after = fetchLastPost(es, redditTeam) 
-    
-    lastPost = None
+    subreddit = reddit.subreddit(redditTeam)  
+    current_app.logger.info(f'=== aflHarvester: Process reddit post/comments ===')
     for post in subreddit.new(limit=postLimits): 
-        print(post.url)
-        if after == post.fullname.lower():
-            #reach last scrapped post then break
-            break
+        print(post.url) 
         text = cleanText(post.title + " " + post.selftext)
         postTeams = teamMentioned(text)
 
         if postTeams:
             sentiment = sentimentPerTeam(text,post.subreddit.display_name.lower(),post.score, postTeams) 
-            storeElastic(es,text,post,"post",sentiment,True)
+            stored = storeElastic(es,text,post,"post",sentiment,True)
+            if stored == "exist":
+                break
         else: 
-            sentiment =  sentimentAnalyser.polarity_scores(text)['compound']  
-            storeElastic(es,text,post,"post",sentiment,False)
+            sentiment =  sentimentAnalyser.polarity_scores(text)['compound'] 
+            stored = storeElastic(es,text,post,"post",sentiment,False)
+            if stored == "exist":
+                break
+            
             
         post.comments.replace_more(limit=0) 
         
@@ -238,12 +218,7 @@ def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
                 continue 
             if commentTeams: 
                 sentiment = sentimentPerTeam(commentText,post.subreddit.display_name.lower(), comment.score, commentTeams)
-                storeElastic(es,commentText,post,"comment",sentiment,True,comment.id)
-        
-        lastPost = post.fullname
-    if lastPost:
-        #Store last post details
-        saveLastPost(es,redditTeam,lastPost)
+                storeElastic(es,commentText,post,"comment",sentiment,True,comment.id) 
     return "ok"
         
         
@@ -252,66 +227,22 @@ def harvestSubreddit(es,redditTeam, postLimits=10) -> str:
 def main():
     """
     Run harvest subreddit for all AFL team, skip if we get an conflicterror
+    Return: return string and 200 code after harvested afl data
     """
-    print("main() function started", flush=True) 
-    with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
-        es_username = f.read().strip()
-
-    with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
-        es_password = f.read().strip() 
-        
+    current_app.logger.info(f'=== aflHarvester: Initialise ===') 
     redisClient: redis.StrictRedis = redis.StrictRedis(
         host='redis-headless.redis.svc.cluster.local',
         socket_connect_timeout=5,
         decode_responses=False
-    ) 
-    es = Elasticsearch(
-    hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
-    basic_auth=(es_username, es_password),verify_certs=False,ssl_show_warn=False)  
-     
+    )  
 
     try:
         team = redisClient.rpop("afl:subreddit")
         if not team:
             return "Queue empty", 200
         job = json.loads(team)
-        harvestSubreddit(es, job["team"], postLimits=job["limit"])
-        print("job done", flush=True)
+        harvestSubreddit(job["team"], postLimits=job["limit"]) 
+        current_app.logger.info(f'=== aflHarvester: Job completed Harvested {job["team"]} ===')
         return f"Harvested {job['team']}", 200
     except ApiError as e:
-        return json.dumps({"error": str(e)}), 500        
-
-    # try:
-    #     print("🔄 Running initial team check...", flush=True)
-    #     limit = 1000 # fixed inital post per subreddit
-    #     for team in TEAM.keys():
-    #         print(f"Checking team: {team}", flush=True)
-    #         if not initalCheck(es, team):
-    #             print(f"Team {team} not harvested yet", flush=True)
-    #             continue
-    #         else:
-    #             print(f"Team {team} already harvested", flush=True)
-    #             limit = 10
-    #             break 
-    #     for i in TEAM.keys():
-    #         print(f"📦 Harvesting subreddit for: {i} with limit {limit}", flush=True)  # ✅ Step 5
-    #         try:
-    #             harvestSubreddit(es,i,postLimits=limit)
-    #         except Exception as e:
-    #             print(f"Skipping {i} due to error: {e}", flush=True) 
-    #             continue 
-    #     print("✅ Completed harvesting", flush=True)
-    #     return "ok",200
-    # except ApiError as e:
-    #     return json.dumps({"error": str(e)}), 500
-    
-    # return "ok", 200
-    
-    # for i in TEAM.keys():
-    #     try:
-    #         harvestSubreddit(i,postLimits=1000)
-    #     except Exception as e:
-    #         print(f"Skipping {i} due to error: {e}")
-    #         continue
-    
-        
+        return json.dumps({"error": str(e)}), 500       

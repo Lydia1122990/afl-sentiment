@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   name: scoretimer
 spec:
-  cron: 0 10 * * MON
+  cron: 0 12 * * *
   functionref:
     functionweights: null
     name: scoreharvester

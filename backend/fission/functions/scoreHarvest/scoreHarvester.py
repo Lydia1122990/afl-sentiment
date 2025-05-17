@@ -3,12 +3,7 @@ import time
 from elasticsearch8 import Elasticsearch, exceptions,ApiError 
 from datetime import datetime
 import json
-
-# fission package create --spec --name scoreharvester-pkg --source ./functions/scoreHarvest/scoreHarvester.py --source ./functions/scoreHarvest/requirements.txt --env python39 
-# fission fn create --spec --name scoreharvester --pkg scoreharvester-pkg --env python39 --entrypoint scoreHarvester.main --secret elastic-secret
-# fission route create --spec --name scoreharvester-route --function scoreharvester --url /scoreharvester --method POST --createingress
-# fission timetrigger create --spec --name scoretimer --function scoreharvester --cron "0 1 0 * * MON"
-# run every week on monday
+from flask import current_app 
 
 HEADERS = {
     "User-Agent": "AFL Bot - sentiment@bot.com"
@@ -38,10 +33,48 @@ def accuracy(goals, behinds):
         return round(goals / (goals + behinds), 4)
     return None
 
-def scoreHarvest(es,year=2024):
+
+def addElastic(docID,indexText,doc):
     """
-    h stand for home , a stand for away
+    Send data to fission function addelastic to store into elastic
     """
+    current_app.logger.info(f'=== scoreHarvester: Adding Post {docID} ===')
+    url='http://router.fission/addelastic'
+    payload = {"indexDocument":indexText,"docID":docID,"doc":doc}  
+    try:
+        response = requests.post(url, json=payload, timeout=5) 
+        current_app.logger.info(f'=== scoreHarvester AddElastic response: Exception in addElastic POST: {response.status_code} {response.text} ===') 
+    except Exception as e:
+        current_app.logger.info(f'=== scoreHarvester: Exception in addElastic POST: {str(e)} ===') 
+     
+    return "ok"
+
+def checkPost(docID,indexDoc):
+    """
+    Check post ID see if exist in elastic index
+    """
+    current_app.logger.info(f'=== scoreHarvester: Checking Post {docID} ===')
+    url='http://router.fission/checkelastic'
+    payload = {
+            "indexDocument": indexDoc,
+            "docID": docID, 
+        }
+    res = requests.post(url,json=payload)
+    return res.json()["found"]
+
+def scoreHarvest(year=2024):
+    """
+    h stand for home , a stand for away 
+    
+    Handles:
+    - squiggle data
+    - JSON payload serialization 
+    - store scores into elastic
+
+    Returns:
+        'OK' with HTTP 200 on successful enqueue 
+    """
+    current_app.logger.info(f'=== scoreHarvester: Scraping squiggle data ===')
     games = fetchGames(year)
     rounds = sorted(set(game["round"] for game in games if game["complete"] == 100))  
 
@@ -57,9 +90,7 @@ def scoreHarvest(es,year=2024):
                 elif game["hteam"].lower() == game["winner"].lower():
                     result = "Winner" 
                 else:
-                    result = "Loser"
-                print(game) 
-                print(ladderMap)   
+                    result = "Loser" 
                 homeDoc = {
                         "team": game["hteam"],
                         "opponent": game["ateam"],
@@ -97,27 +128,30 @@ def scoreHarvest(es,year=2024):
                         "roundname": game["roundname"],
                         "completed": True
                     } 
-                try:
-                    es.create(index="afl-scores", id=f"home_{game['hteam']}_{roundNumber}", document=homeDoc) 
-                    es.create(index="afl-scores", id=f"away_{game['ateam']}_{roundNumber}", document=awayDoc)
-                except exceptions.ConflictError: 
-                    print(f"Document home_{game['hteam']}_{roundNumber} already exists, skipping...")
-                    continue
+                
+                addElastic(f"home_{game['hteam']}_{roundNumber}","afl-scores",homeDoc)
+                addElastic(f"away_{game['ateam']}_{roundNumber}","afl-scores",awayDoc) 
         time.sleep(1)  
     return "ok"
 
         
     
 def main():
-    try:
-        with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
-            es_username = f.read().strip()
+    """
+    
+    Handles: 
+    - Calls scoreHarves for year 2024 until current year
 
-        with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
-            es_password = f.read().strip()  
-        es = Elasticsearch(hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"], basic_auth=(es_username, es_password),verify_certs=False,ssl_show_warn=False) 
+    Returns:
+        'OK' with HTTP 200 on successful enqueue
+
+    Raises: 
+        ApiError: These errors are triggered from an HTTP response is not 200:
+    """
+    try:
         for year in range(2024,datetime.now().year + 1):
-            scoreHarvest(es,year) 
+            scoreHarvest(year) 
+        current_app.logger.info(f'=== scoreHarvester: Scrape completed ===')
         return "ok",200
     except ApiError as e:
         return json.dumps({"error": str(e)}), 500

@@ -21,8 +21,8 @@ def config(key: str) -> list:
     """Reads configuration from share data file """
     
     with open(f'/configs/default/shared-data/{key}', 'r') as f:
-        teamData = json.loads(f.read())
-        return list(teamData.keys())
+        Data = json.loads(f.read())
+        return list(Data.keys())
     
 def getPostCount(es, team):
     """
@@ -40,6 +40,24 @@ def getPostCount(es, team):
     }
     result = es.count(index="afl-sentiment", body=query)
     return result.get("count", 0)
+
+def getTransPostCount(es, city):
+    """
+    Returns total documents in ES for a given city
+    """
+    query = {
+        "query": {
+            "bool": {
+                "must": [
+                    { "term": { "city.keyword": city }},
+                    { "term": { "type.keyword": "post" }}
+                ]
+            }
+        }
+    }
+    result = es.count(index="trans-reddit-sentiment", body=query)
+    return result.get("count", 0)
+
 
 def main() -> str:
     """Message queue producer for Redis streaming.
@@ -102,5 +120,26 @@ def main() -> str:
 
             redisClient.rpush("afl:subreddit", json.dumps(job))
             print(f"Enqueued {team} with limit {limit} (count = {postCount})",flush=True)
+    elif str(topic).upper() == "CITY":
+        
+        if redisClient.llen("trans:subreddit") > 50:
+            # skipped enqueue to avoid over scaling
+            print("Too many unprocessed jobs — skipping enqueue this round.")
+            return "ok"
+        for city in config("CITY"):
+            postCount = getTransPostCount(es, city.lower())
+            limit = 10 if postCount >= 1000 else 1000
+
+            job = {
+                "city": city,
+                "limit": limit
+            }
+            current_app.logger.info(
+                f'Enqueued to {topic} topic - ' 
+                f' job : {job} '
+            )
+
+            redisClient.rpush("trans:subreddit", json.dumps(job))
+            print(f"Enqueued {city} with limit {limit} (count = {postCount})",flush=True)
 
     return 'ok' 

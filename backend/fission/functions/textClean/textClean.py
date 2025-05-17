@@ -1,9 +1,13 @@
 import emoji
 import json 
-from flask import request
+from flask import request,current_app
 
 def main():
-    # Parse JSON input
+    """
+    Process text and remove unnecessary text.
+    return: cleaned text
+    """
+    current_app.logger.info(f'=== cleantext: Intitalise ===')
     data = request.get_json() 
     if "text" not in data:
         print("Missing text key in JSON data") 
