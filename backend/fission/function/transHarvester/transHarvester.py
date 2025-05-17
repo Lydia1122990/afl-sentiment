@@ -51,7 +51,7 @@ CITY = {
   "sydney metro",
   "sydney light rail",
   "sydney ferry",
-  "sydney opal",
+    "opal",
   "sydney train delay",
   "sydney tram delay",
   "sydney bus delay",
@@ -364,6 +364,7 @@ def harvestSubreddit(es,redditCity, postLimits=10) -> str:
             #reach last scrapped post then break
             break
         text = cleanText(post.title + " " + post.selftext)
+        print(text)
         postCities = cityContain(text)
 
         if postCities:
@@ -413,10 +414,8 @@ def main():
     es = Elasticsearch(
     hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
     basic_auth=(es_username, es_password),verify_certs=False,ssl_show_warn=False)  
-     
-
     try:
-        city = redisClient.rpop("afl:subreddit")
+        city = redisClient.rpop("trans:subreddit")
         if not city:
             return "Queue empty", 200
         job = json.loads(city)
@@ -424,5 +423,6 @@ def main():
         print("job done", flush=True)
         return f"Harvested {job['city']}", 200
     except ApiError as e:
-        return json.dumps({"error": str(e)}), 500   
+        return json.dumps({"error": str(e)}), 500       
 
+   
