@@ -107,7 +107,7 @@ def main() -> str:
             return "ok"
         for team in config("TEAM"):
             postCount = getPostCount(es, team.lower())
-            limit = 10 if postCount >= 1000 else 1000
+            limit = 10 if postCount >= 500 else 500
 
             job = {
                 "team": team,

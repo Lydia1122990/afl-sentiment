@@ -61,3 +61,9 @@ kubectl port-forward service/kibana-kibana -n elastic 5601:5601
 ```shell
 kubectl port-forward service/redis-insight --namespace redis 5540:5540
 ```
+
+### Delete all package, route, triggers
+```shell
+source ./build.sh
+```
+

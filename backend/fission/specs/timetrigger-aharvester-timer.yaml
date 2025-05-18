@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   name: aharvester-timer
 spec:
-  cron: '*/1 * * * *'
+  cron: '*/5 * * * *'
   functionref:
     functionweights: null
     name: aharvester
