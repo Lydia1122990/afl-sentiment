@@ -1,0 +1,10 @@
+apiVersion: fission.io/v1
+kind: HTTPTrigger
+metadata:
+  name: mastodon-route
+spec:
+  relativeurl: /mastodon
+  method: GET
+  functionref:
+    name: mastodon-harvester
+    type: name
