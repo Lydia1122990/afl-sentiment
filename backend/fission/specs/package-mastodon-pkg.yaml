@@ -1,0 +1,12 @@
+apiVersion: fission.io/v1
+kind: Package
+metadata:
+  name: mastodon-pkg
+  namespace: default
+spec:
+  environment:
+    name: secret-env
+    namespace: default
+  source:
+    type: url
+    url: archive://mharvester.zip
