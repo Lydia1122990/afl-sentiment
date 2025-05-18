@@ -222,9 +222,9 @@ def main():
             except Exception as e:
                 print(f"Exception while uploading to elastic uploader: {e}")
 
-        return {"statusCode": 200, "message": "Harvesting complete"}
+        return {"Code": 200, "message": "Harvesting complete"}
 
 
 
     except Exception as e:
-        return {"statusCode": 500, "body": f"Error: {e}"}
+        return {"Code": 500, "message": f"Error: {e}"}
