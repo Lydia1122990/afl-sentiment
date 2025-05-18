@@ -1,0 +1,2 @@
+atproto==0.0.61
+elasticsearch8==8.13.0
