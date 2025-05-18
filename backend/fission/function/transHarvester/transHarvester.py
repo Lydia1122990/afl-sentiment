@@ -12,6 +12,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from elasticsearch8 import ApiError
 from elasticsearch8 import exceptions
 from elasticsearch8 import Elasticsearch
+from flask import current_app
 
 sentimentAnalyser = SentimentIntensityAnalyzer()
 # List of city names (to be provided by user)
@@ -220,7 +221,7 @@ for city, nicknames in CITY.items():
     for alias in nicknames:
         cityNickname[alias.lower()] = city
 
-def cityContain(text, cities = cityNickname):
+def cityContain(text, cities = cityNickname) -> list:
     """
     Check if any city name is in the text.
     """
@@ -230,7 +231,7 @@ def cityContain(text, cities = cityNickname):
             foundCity.add(city)
     return list(foundCity)
 
-def cleanText(text):
+def cleanText(text) -> str:
     """
     Send text to fission fucntion text-clean for cleaning and return cleaned text
     """
@@ -239,7 +240,33 @@ def cleanText(text):
     response = requests.post(url,json=payload)
     return response.json()["cleanedText"]
 
-def sentimentPerCity(text,postSub, upvoteScore=1, cities=CITY):
+def addElastic(docID,indexText,doc):
+    """
+    Send data to fission function addelastic to store into elastic
+    """ 
+    url='http://router.fission/addelastic'
+    payload = {"indexDocument":indexText,"docID":docID,"doc":doc}  
+    try:
+        response = requests.post(url, json=payload, timeout=5)
+        current_app.logger.info(f'=== transHarvester: AddElastic response: {response.status_code} {response.text} ===')  
+    except Exception as e:
+        current_app.logger.info(f'=== transHarvester: Exception in addElastic POST: {str(e)} ===')   
+     
+    return "ok"
+
+def checkPost(docID,indexDoc):
+    """
+    Check post ID see if exist in elastic index
+    """
+    url='http://router.fission/checkelastic'
+    payload = {
+            "indexDocument": indexDoc,
+            "docID": docID, 
+        }
+    res = requests.post(url,json=payload) 
+    return res.json()["found"]
+
+def sentimentPerCity(text,postSub, upvoteScore=1, cities=CITY) -> dict:
     """
     Get total weighted sentiment per city , if city is not mentioned in posts then assumed its related to subredit city
     """
@@ -267,16 +294,19 @@ def sentimentPerCity(text,postSub, upvoteScore=1, cities=CITY):
         
     return resultSentiment 
 
-def storeElastic(es,text,post,postType,sentiments, citiesBool,commentID=False)  -> str:
+def storeElastic(text,post,postType,sentiments,citiesBool,commentID=False)  -> str:
     """
     store data into elastic, docid base on its comment ID and post ID, if post does not mention city then consdier subreddit city 
     """
     try:
-        count = 0 
         if citiesBool:
-            print("storeElastic start, flush=True")
             for city,sentiment in sentiments.items(): 
                 docId = (f"{commentID}_{city}_comment " if commentID else  f"{post.id}_{city}_{postType}").lower() 
+
+                if checkPost(docId,"trans-testing"):
+                    current_app.logger.info(
+                        f'Processing {docId} successful'
+                    )
                 doc = {"type": postType,
                        "platform":"Reddit",                       
                       "city": city.lower(),
@@ -286,13 +316,17 @@ def storeElastic(es,text,post,postType,sentiments, citiesBool,commentID=False)  
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
                 }
-                es.create(index="trans-reddit-sentiment", id=docId, document=doc)
-                print(f"added {docId} {post.subreddit.display_name.lower()}", flush=True)
+                addElastic(docId,"trans-reddit-sentiment",doc) 
+                current_app.logger.info(
+                    f'Stored {docId} successful'
+                )
                 # print(json.dumps(doc,indent=4,sort_keys=True))
         else:
-            count += 1
-            print("storeElastic start, flush=True")
             docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
+            if checkPost(docId,"trans-testing"):
+                    current_app.logger.info(
+                        f'Skipped {docId} as it exists'
+                    )
             doc = {"type": postType,
                    "platform":"Reddit",  
                       "city": post.subreddit.display_name.lower(),
@@ -302,48 +336,24 @@ def storeElastic(es,text,post,postType,sentiments, citiesBool,commentID=False)  
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
                 }  
-            es.create(index="trans-reddit-sentiment", id=docId, document=doc)
-            print(f"added {count} {docId} {post.subreddit.display_name.lower()}", flush=True)
-            # print(json.dumps(doc,indent=4,sort_keys=True))
+            addElastic(docId,"trans-reddit-sentiment",doc) 
+            current_app.logger.info(
+                    f'Stored {docId} successful'
+                )
         return "ok"
-    except exceptions.ConflictError:
-        print(f"Document {post.id}_{post.subreddit.display_name.lower()} already exists, skipping...")
-        return "ok"
-    
-def saveLastPost(es, subredditName, postFullname) -> str:
-    """
-    Store last post details into elastic database to store later
-    """
-    docId = f"after-{subredditName}"
-    doc = {
-        "type": "harvest-flag",
-        "platform": "Reddit",
-        "city": subredditName.lower(),
-        "last": postFullname.lower(),
-        "updatedOn": datetime.now().isoformat()
-    }
-    print(f"store {docId}")
-    es.index(index="trans-harvest-details", id=docId, document=doc)
-    return "ok"
-
-def fetchLastPost(es, subredditName):
-    """
-    Fetch last post details
-    """
-    docId = f"last-{subredditName.lower()}"
-    print(f"fetch {docId}")
-    try:
-        doc = es.get(index="trans-harvest-details", id=docId)
-        return doc["_source"].get("last", None)
-    except exceptions.NotFoundError:
-        return None       
+    except ApiError as e:
+        current_app.logger.info(
+            f'=== transHarvester: {e} occur when processing {post.id}_{post.subreddit.display_name.lower()} ==='
+        )
+        return "ok"  
  
-def harvestSubreddit(es,redditCity, postLimits=10) -> str:
+def harvestSubreddit(redditCity, postLimits=1000) -> str:
     """
     Harvest post and its comments and get the sentiment value
     Fetch new posts each run. Use after or timestamp to get the next batch. Save the latest post ID it saw. 
     keepign the code to run wihtout taking too long
     """ 
+    current_app.logger.info(f'=== transHarvester: Initialise Reddit ===')
     with open("/secrets/default/elastic-secret/REDDIT_CLIENT_ID") as f:
         clientID = f.read().strip()
 
@@ -355,24 +365,22 @@ def harvestSubreddit(es,redditCity, postLimits=10) -> str:
         user_agent="python:reddit-harvester:v1.0 (by /u/Exact_Agency_3144)",
     )
     subreddit = reddit.subreddit(redditCity) 
-    after = fetchLastPost(es, redditCity) 
-    
-    lastPost = None
+    current_app.logger.info(f'=== transHarvester: Process reddit post/comments ===')
     for post in subreddit.new(limit=postLimits): 
         print(post.url)
-        if after == post.fullname.lower():
-            #reach last scrapped post then break
-            break
         text = cleanText(post.title + " " + post.selftext)
-        print(text)
         postCities = cityContain(text)
 
         if postCities:
             sentiment = sentimentPerCity(text,post.subreddit.display_name.lower(),post.score, postCities) 
-            storeElastic(es,text,post,"post",sentiment,True)
+            stored = storeElastic(text,post,"post",sentiment,True)
+            if stored == "exist":
+                break
         else: 
             sentiment =  sentimentAnalyser.polarity_scores(text)['compound']  
-            storeElastic(es,text,post,"post",sentiment,False)
+            stored = storeElastic(text,post,"post",sentiment,False)
+            if stored == "exist":
+                break
             
         post.comments.replace_more(limit=0) 
         
@@ -384,12 +392,7 @@ def harvestSubreddit(es,redditCity, postLimits=10) -> str:
                 continue 
             if commentCities: 
                 sentiment = sentimentPerCity(commentText,post.subreddit.display_name.lower(), comment.score, commentCities)
-                storeElastic(es,commentText,post,"comment",sentiment,True,comment.id)
-        
-        lastPost = post.fullname
-    if lastPost:
-        #Store last post details
-        saveLastPost(es,redditCity,lastPost)
+                storeElastic(commentText,post,"comment",sentiment,True,comment.id)
     return "ok"
         
         
@@ -399,30 +402,20 @@ def main():
     """
     Run harvest subreddit for all Cities, skip if we get an conflicterror
     """
-    print("main() function started", flush=True) 
-    with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
-        es_username = f.read().strip()
-
-    with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
-        es_password = f.read().strip() 
-        
+    current_app.logger.info(f'=== transHarvester: Initialise ===')
     redisClient: redis.StrictRedis = redis.StrictRedis(
-        host='redis-headless.redis.svc.cluster.local',
-        socket_connect_timeout=5,
-        decode_responses=False
-    ) 
-    es = Elasticsearch(
-    hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
-    basic_auth=(es_username, es_password),verify_certs=False,ssl_show_warn=False)  
+        host = 'redis-headless.redis.svc.cluster.local',
+        socket_connect_timeout = 5,
+        decode_responses = False
+    )
     try:
         city = redisClient.rpop("trans:subreddit")
         if not city:
             return "Queue empty", 200
         job = json.loads(city)
-        harvestSubreddit(es, job["city"], postLimits=job["limit"])
-        print("job done", flush=True)
+        harvestSubreddit(job["city"], postLimits=job["limit"])
+        current_app.logger.info(f'=== transHarvester: Job completed Harvested {job["city"]} ===')
         return f"Harvested {job['city']}", 200
     except ApiError as e:
         return json.dumps({"error": str(e)}), 500       
-
    
