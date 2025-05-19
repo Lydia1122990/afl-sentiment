@@ -38,7 +38,7 @@ def getPostCount(es, team):
             }
         }
     }
-    result = es.count(index="afl-sentiment", body=query)
+    result = es.count(index="afl-sentiments", body=query)
     return result.get("count", 0)
 
 def getTransPostCount(es, city):
@@ -102,8 +102,10 @@ def main() -> str:
     if str(topic).upper() == "TEAM":
         
         if redisClient.llen("afl:subreddit") > 50:
-            # skipped enqueue to avoid over scaling
-            print("Too many unprocessed jobs — skipping enqueue this round.")
+            # skipped enqueue to avoid over scaling 
+            current_app.logger.info(
+                f'=== Enqueue: Too many unprocessed jobs — skipping enqueue this round. ==='  
+            )
             return "ok"
         for team in config("TEAM"):
             postCount = getPostCount(es, team.lower())
@@ -118,13 +120,17 @@ def main() -> str:
             f' job : {job} '
     )
 
-            redisClient.rpush("afl:subreddit", json.dumps(job))
-            print(f"Enqueued {team} with limit {limit} (count = {postCount})",flush=True)
+            redisClient.rpush("afl:subreddit", json.dumps(job)) 
+            current_app.logger.info(
+                f'=== Enqueue: {team} with limit {limit} (count = {postCount}) ==='  
+            )
     elif str(topic).upper() == "CITY":
         
         if redisClient.llen("trans:subreddit") > 50:
-            # skipped enqueue to avoid over scaling
-            print("Too many unprocessed jobs — skipping enqueue this round.")
+            # skipped enqueue to avoid over scaling 
+            current_app.logger.info(
+                f'=== Enqueue: Too many unprocessed jobs — skipping enqueue this round. ==='  
+            )
             return "ok"
         for city in config("CITY"):
             postCount = getTransPostCount(es, city.lower())

@@ -114,7 +114,7 @@ def sentimentPerTeam(text,postSub, upvoteScore=1, teams=TEAM) -> dict:
         
     return resultSentiment 
 
-def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -> str:
+def storeElastic(text,post,postType,sentiments, teamsBool,commentID=False)  -> str:
     """
     store data into elastic, docid base on its comment ID and post ID, if post does not mention team then consider subreddit team 
     """
@@ -123,7 +123,7 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
             for team,sentiment in sentiments.items(): 
                 docId = (f"{commentID}_{team}_comment " if commentID else  f"{post.id}_{team}_{postType}").lower() 
                 
-                if checkPost(docId,"afl-testing"):
+                if checkPost(docId,"afl-sentiments"):
                     current_app.logger.info(
                         f'Skipped {docId} as it exists ' 
                     )
@@ -140,13 +140,13 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
                 }
-                addElastic(docId,"afl-sentiment",doc) 
+                addElastic(docId,"afl-sentiments",doc) 
                 current_app.logger.info(
                     f'Stored {docId} successful' 
                 ) 
         else: 
             docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
-            if checkPost(docId,"afl-testing"):
+            if checkPost(docId,"afl-sentiments"):
                 current_app.logger.info(
                     f'Skipped {docId} as it exists ' 
                 )
@@ -163,7 +163,7 @@ def storeElastic(es,text,post,postType,sentiments, teamsBool,commentID=False)  -
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
                 }   
-            addElastic(docId,"afl-sentiment",doc)
+            addElastic(docId,"afl-sentiments",doc)
             current_app.logger.info(
                     f'Stored {docId} successful' 
                 ) 
@@ -198,12 +198,12 @@ def harvestSubreddit(redditTeam, postLimits=10) -> str:
 
         if postTeams:
             sentiment = sentimentPerTeam(text,post.subreddit.display_name.lower(),post.score, postTeams) 
-            stored = storeElastic(es,text,post,"post",sentiment,True)
+            stored = storeElastic(text,post,"post",sentiment,True)
             if stored == "exist":
                 break
         else: 
             sentiment =  sentimentAnalyser.polarity_scores(text)['compound'] 
-            stored = storeElastic(es,text,post,"post",sentiment,False)
+            stored = storeElastic(text,post,"post",sentiment,False)
             if stored == "exist":
                 break
             
@@ -218,7 +218,7 @@ def harvestSubreddit(redditTeam, postLimits=10) -> str:
                 continue 
             if commentTeams: 
                 sentiment = sentimentPerTeam(commentText,post.subreddit.display_name.lower(), comment.score, commentTeams)
-                storeElastic(es,commentText,post,"comment",sentiment,True,comment.id) 
+                storeElastic(commentText,post,"comment",sentiment,True,comment.id) 
     return "ok"
         
         
