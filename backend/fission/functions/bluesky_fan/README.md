@@ -23,6 +23,7 @@ Create function:
       --pkg fanpkg \
       --env python39 \
       --entrypoint "fanpkg.main"
+      --secret elastic-secret
 
 Create route:
 

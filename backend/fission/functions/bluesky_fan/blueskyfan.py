@@ -1,12 +1,27 @@
 import httpx
-from elasticsearch8 import Elasticsearch, exceptions
 from datetime import datetime
 import json
+import requests
+from flask import current_app
 
-print("import done")
+def addElastic(docID, indexText, doc):
+    """
+    Send data to Fission function 'addelastic' to store into Elasticsearch.
+    """
+    print("=== addElastic start ===", flush=True)
+    url = 'http://router.fission/addelastic'
+    payload = {"indexDocument": indexText, "docID": docID, "doc": doc}
+    try:
+        response = requests.post(url, json=payload, timeout=5)
+        current_app.logger.info(f'=== aflBluesky: AddElastic : Response: {response.status_code} {response.text} ===')
+    except Exception as e:
+        current_app.logger.info(f'=== aflBluesky: AddElastic : Exception in addElastic POST: {str(e)} ===')
+    return "ok"
 
 def main():
-    # Load Bluesky credentials from secrets
+    current_app.logger.info(f'=== aflBluesky: Initialise ===')
+
+    # Load Bluesky credentials
     with open("/secrets/default/elastic-secret/BLUESKY_CLIENT_ID") as f:
         username = f.read().strip()
     with open("/secrets/default/elastic-secret/BLUESKY_CLIENT_PASSWORD") as f:
@@ -22,23 +37,9 @@ def main():
         login_resp.raise_for_status()
         session_data = login_resp.json()
         access_jwt = session_data["accessJwt"]
-        did = session_data["did"]
     except Exception as e:
-        print(f"❌ Bluesky login failed: {e}")
+        current_app.logger.info(f"aflBluesky: Bluesky login failed: {e}")
         return "error"
-
-    # Load Elasticsearch credentials from secrets
-    with open("/secrets/default/elastic-secret/ES_USERNAME") as f:
-        es_username = f.read().strip()
-    with open("/secrets/default/elastic-secret/ES_PASSWORD") as f:
-        es_password = f.read().strip()
-
-    es = Elasticsearch(
-        hosts=["https://elasticsearch-master.elastic.svc.cluster.local:9200"],
-        basic_auth=(es_username, es_password),
-        verify_certs=False,
-        ssl_show_warn=False
-    )
 
     # AFL Bluesky handles
     afl_teams_bsky = {
@@ -66,7 +67,6 @@ def main():
 
     try:
         for team, handle in afl_teams_bsky.items():
-            # Get profile via HTTP
             profile_resp = httpx.get(
                 "https://bsky.social/xrpc/app.bsky.actor.getProfile",
                 params={"actor": handle},
@@ -85,14 +85,11 @@ def main():
                 "retrieved_at": retrieve_date
             }
 
-            es.create(index="afl-bluesky-fans", id=doc_id, document=doc)
-            print(f"✅ Indexed {team}: {followers} followers")
+            addElastic(doc_id, "afl-bluesky-fans", doc)
+            print(f"✅ Sent {team}: {followers} followers")
 
         return "ok"
 
-    except exceptions.ConflictError:
-        print("⚠️ Document already exists, skipping...")
-        return "ok"
     except Exception as e:
-        print(f"❌ Error during processing: {e}")
+        current_app.logger.info(f"aflBluesky: Error during processing: {e}")
         return "error"

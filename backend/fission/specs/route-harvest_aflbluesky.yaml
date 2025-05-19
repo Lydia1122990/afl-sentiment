@@ -2,21 +2,21 @@ apiVersion: fission.io/v1
 kind: HTTPTrigger
 metadata:
   creationTimestamp: null
-  name: fanbluesky4
+  name: harvest-aflbluesky
 spec:
-  createingress: true
+  createingress: false
   functionref:
     functionweights: null
-    name: fanbluesky4
+    name: harvest-aflbluesky
     type: name
   host: ""
   ingressconfig:
     annotations: null
     host: '*'
-    path: /fanbluesky4
+    path: /harvest_aflbluesky
     tls: ""
   method: ""
   methods:
   - GET
   prefix: ""
-  relativeurl: /fanbluesky4
+  relativeurl: /harvest_aflbluesky
