@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   name: scoreharvester-route
 spec:
-  createingress: false
+  createingress: true
   functionref:
     functionweights: null
     name: scoreharvester

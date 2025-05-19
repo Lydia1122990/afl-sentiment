@@ -123,7 +123,7 @@ def storeElastic(text,post,postType,sentiments, teamsBool,commentID=False)  -> s
             for team,sentiment in sentiments.items(): 
                 docId = (f"{commentID}_{team}_comment " if commentID else  f"{post.id}_{team}_{postType}").lower() 
                 
-                if checkPost(docId,"afl-testing"):
+                if checkPost(docId,"afl-sentiments"):
                     current_app.logger.info(
                         f'Skipped {docId} as it exists ' 
                     )
@@ -140,13 +140,13 @@ def storeElastic(text,post,postType,sentiments, teamsBool,commentID=False)  -> s
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
                 }
-                addElastic(docId,"afl-sentiment",doc) 
+                addElastic(docId,"afl-sentiments",doc) 
                 current_app.logger.info(
                     f'Stored {docId} successful' 
                 ) 
         else: 
             docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
-            if checkPost(docId,"afl-testing"):
+            if checkPost(docId,"afl-sentiments"):
                 current_app.logger.info(
                     f'Skipped {docId} as it exists ' 
                 )
@@ -163,7 +163,7 @@ def storeElastic(text,post,postType,sentiments, teamsBool,commentID=False)  -> s
                       "createdOn": datetime.fromtimestamp(post.created_utc).isoformat(),
                       "url":post.url,
                 }   
-            addElastic(docId,"afl-sentiment",doc)
+            addElastic(docId,"afl-sentiments",doc)
             current_app.logger.info(
                     f'Stored {docId} successful' 
                 ) 
