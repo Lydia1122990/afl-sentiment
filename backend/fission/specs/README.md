@@ -12,9 +12,10 @@ These specs are handled with the 'fission spec' command.  See
 ```shell
 fission spec --help
 ```
+
 Use
 ```shell
-fission spec apply'
+fission spec apply
 ```
 will "apply" all resources specified in this directory to your
 cluster. That means it checks what resources exist on your cluster, what resources are
