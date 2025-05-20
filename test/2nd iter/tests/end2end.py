@@ -60,12 +60,12 @@ class TestEnd2End(unittest.TestCase):
         response = testRequest.post("text-clean", {"text": "\u2014 \u2014 Winner\u2026"}) 
         self.assertEqual(json.loads(response.text)["cleanedText"], "— — Winner...")
     # def test_enqueue(self): 
-    #     response = testRequest.post(
-    #         "enqueue/test",
-    #         json={"team": "melbournefc", "limit": 10}
-    #     )
-    #     self.assertEqual(response.status_code, 200)
-    #     self.assertIn("ok", response.text)
+        response = testRequest.post(
+            "enqueue/test",
+            json={"team": "melbournefc", "limit": 10}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("ok", response.text)
         
     def test_elastic(self):
         payload = {

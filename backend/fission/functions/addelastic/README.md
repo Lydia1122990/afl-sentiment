@@ -47,3 +47,18 @@ Apply specs
 ```shell
 fission spec apply
 ```
+
+Testing: Follow steps in [tests](https://gitlab.unimelb.edu.au/junjwang3/comp90024-team-54/-/tree/main/test?ref_type=heads) folder to activate venv and run below command to test addelastic
+
+1st Iteration folder: [test](https://gitlab.unimelb.edu.au/junjwang3/comp90024-team-54/-/tree/main/test/1st%20iter/test?ref_type=heads)
+```shell
+python end2end.py
+```
+Upon successful executaiton payload should be added to index test-log and terminal output should show test successful
+
+2nd Iteration folder: [test](https://gitlab.unimelb.edu.au/junjwang3/comp90024-team-54/-/tree/main/test/2nd%20iter?ref_type=heads)
+```shell
+python end2end.py
+```
+Upon successful executaiton payload should be added to index test-log
+

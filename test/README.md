@@ -19,3 +19,5 @@ Running python
 ```
 python {filename}/end2end.py
 ```
+
+Retun test fail if any of the test failed.

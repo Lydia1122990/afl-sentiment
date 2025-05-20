@@ -27,3 +27,13 @@ Apply specs
 ```shell
 fission spec apply
 ```
+
+Testing:
+```shell
+fission fn test --name scoreharvester
+fission fn log -f --name scoreharvester
+```
+Logs should show score harvested
+```shell
+=== scoreHarvester: Scrape completed ===
+```

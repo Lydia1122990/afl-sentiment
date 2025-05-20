@@ -32,22 +32,22 @@ class HTTPSession:
 
 class TestEnd2End(unittest.TestCase):
     """End-to-end tests for student/course management API."""
-    # def testEnqueue(self): 
-    #     self.assertEqual(
-    #         testRequest.post("enqueue/TEAM").status_code,
-    #         200
-    #     )
-    # def testElastic(self):
-    #     payload = {
-    #         "index": "afl-sentiment",
-    #         "indexDocument": "afl-sentiment",
-    #         "docID": "test-team-2024",
-    #         "doc": {
-    #             "team": "gws",
-    #             "sentiment": 0.45, 
-    #         }
-    #     }
-    #     self.assertEqual(testRequest.post("addelastic",payload).status_code,200)  
+    def testEnqueue(self): 
+        self.assertEqual(
+            testRequest.post("enqueue/TEAM").status_code,
+            200
+        )
+    def testElastic(self):
+        payload = {
+            "index": "test-log",
+            "indexDocument": "afl-sentiment",
+            "docID": "test-team-2024",
+            "doc": {
+                "team": "gws",
+                "sentiment": 0.45, 
+            }
+        }
+        self.assertEqual(testRequest.post("addelastic",payload).status_code,200)  
         
     def testCheckElastic(self):
         payload = {
