@@ -1,5 +1,39 @@
 # COMP90024 Team 54
 
+#### codebase	layout	(folders	and	subfolders)
+```
+.
+├── README.md
+├── backend
+│   ├── delete_duplicate_url.py
+│   ├── fission
+│   ├── harvest_mastodon_publictransport.py
+│   └── unit_test
+├── data
+│   └── README.md
+├── database
+│   └── README.md
+├── docs
+│   └── README.md
+├── env.yaml
+├── frontend
+│   ├── Data_visualisation.ipynb
+│   ├── README.md
+│   ├── data_extract.ipynb
+│   └── fission
+├── path.txt
+├── specs
+│   ├── elastic-secret.yaml
+│   └── shared-data.yaml
+└── test
+    ├── 1st iter
+    ├── 2nd iter
+    ├── README.md
+    ├── requirements.txt
+    ├── test_transharvester.py
+    └── test_transobservations.py
+```
+
 
 Check all ElasticSearch pods are running before proceeding:
 
