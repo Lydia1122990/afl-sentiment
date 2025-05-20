@@ -1,8 +1,0 @@
-elasticsearch
-requests
-python-dotenv
-atproto
-nltk
-vaderSentiment
-emoji
-pandas

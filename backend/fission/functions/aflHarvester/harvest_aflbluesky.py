@@ -67,7 +67,7 @@ def sentimentPerTeam(text):
 
 def checkPost(docID):
     url = 'http://router.fission/checkelastic'
-    payload = {"indexDocument": "afl-sentiment-bluesky-2", "docID": docID}
+    payload = {"indexDocument": "afl_bluesky_sentiment-18", "docID": docID}
     try:
         res = requests.post(url, json=payload, timeout=5)
         return res.json().get("found", False)
@@ -99,7 +99,7 @@ def harvestByKeyword(keyword, headers):
     try:
         resp = httpx.get(
             "https://bsky.social/xrpc/app.bsky.feed.searchPosts",
-            params={"q": keyword, "limit": 50},
+            params={"q": keyword, "limit": 10},
             headers=headers,
             timeout=10
         )
@@ -137,7 +137,7 @@ def harvestByKeyword(keyword, headers):
                         "createdOn": created,
                         "url": url
                     }
-                    addElastic(doc_id, "afl-sentiment-bluesky-2", doc)
+                    addElastic(doc_id, "afl_bluesky_sentiment-18", doc)
 
     except Exception as e:
         current_app.logger.info(f"aflBluesky: Error in harvestByKeyword for '{keyword}': {e}")
