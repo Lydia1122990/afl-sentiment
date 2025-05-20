@@ -19,7 +19,6 @@
 ├── frontend
 │   ├── Data_visualisation.ipynb            # Frontend visualizations, notebooks, and user interface components
 │   ├── README.md
-│   ├── data_extract.ipynb                  # Jupyter notebook visualisation
 │   └── fission                             # Fission functions (Mainly for data extraction from ElasticSearch database)
 ├── specs                                   # Kubernetes/Fission specs, secrets, and configuration files
 │   ├── elastic-secret.yaml
