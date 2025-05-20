@@ -80,7 +80,7 @@ def main() -> Dict[str, Any]:
     current_app.logger.info('Executing AFL team sentiment scores from reddit analysis query')
     
     res: Dict[str, Any] = es_client.search(
-        index='afl-sentiment*',  
+        index='afl-sentiment',  
         body=query_body
     )
     
