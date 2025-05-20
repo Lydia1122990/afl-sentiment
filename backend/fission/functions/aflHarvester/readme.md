@@ -4,11 +4,15 @@
 
 ## Installation
 
-fission package create \                                    --spec \                   
+Create package:
+
+fission package create --spec \                   
   --name harvest-aflbluesky \    
   --source ../../backend/fission/functions/aflHarvester/harvest_aflbluesky.py \
   --source ../../backend/fission/functions/aflHarvester/requirements.txt \
   --env python39
+
+Create function:
 
 fission function create --spec \
   --name harvest-aflbluesky \
@@ -17,11 +21,24 @@ fission function create --spec \
   --entrypoint "harvest_aflbluesky.main" \
   --secret elastic-secret
 
+Create route:
+
 fission route create --spec --name harvest-aflbluesky --function harvest-aflbluesky \                            
   --method GET \                 
   --url '/harvest-aflbluesky'
-  
+
+Set up timer to run every 5 minutes:
+
 fission timer create --spec \             
   --name harvest-aflbluesky \
   --function harvest-aflbluesky \
   --cron "*/5 * * * *"
+
+Apply specs:
+
+    fission spec apply --specdir specs --wait
+
+Test function:
+
+    fission fn test --name harvest-aflbluesky --verbosity=2
+    fission fn log -f --name harvest-aflbluesky
