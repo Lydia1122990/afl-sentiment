@@ -66,4 +66,3 @@ kubectl port-forward service/redis-insight --namespace redis 5540:5540
 ```shell
 source ./build.sh
 ```
-

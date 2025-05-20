@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shared-data
+  namespace: default
+data:
+  ES_USERNAME: elastic

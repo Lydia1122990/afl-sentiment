@@ -1,0 +1,25 @@
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: mastodon-harvester
+  namespace: default
+spec:
+  environment:
+    name: secret-env
+    namespace: default
+  package:
+    functionName: mharvester.main            
+    packageref:
+      name: mastodon-pkg
+      namespace: default
+  secrets:
+    - name: elastic-secret-mastodon
+      namespace: default
+  configmaps:
+    - name: shared-data
+      namespace: default
+  functionTimeout: 300
+  concurrency: 500
+  requestsPerPod: 1
+
+
