@@ -303,7 +303,7 @@ def storeElastic(text,post,postType,sentiments,citiesBool,commentID=False)  -> s
             for city,sentiment in sentiments.items(): 
                 docId = (f"{commentID}_{city}_comment " if commentID else  f"{post.id}_{city}_{postType}").lower() 
 
-                if checkPost(docId,"trans-testing"):
+                if checkPost(docId,"trans-reddit-sentiment"):
                     current_app.logger.info(
                         f'Processing {docId} successful'
                     )
@@ -323,7 +323,7 @@ def storeElastic(text,post,postType,sentiments,citiesBool,commentID=False)  -> s
                 # print(json.dumps(doc,indent=4,sort_keys=True))
         else:
             docId = (f"{commentID}_{post.subreddit.display_name.lower()}_comment " if commentID else  f"{post.id}_{post.subreddit.display_name.lower()}_{postType}").lower() 
-            if checkPost(docId,"trans-testing"):
+            if checkPost(docId,"trans-reddit-sentiment"):
                     current_app.logger.info(
                         f'Skipped {docId} as it exists'
                     )
