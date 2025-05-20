@@ -5,36 +5,35 @@ metadata:
   name: shared-data
 data:
   ES_USERNAME: elastic
-  TEAM: |
-    {
-      "adelaidefc":["adelaide crows","crows", "crows reserves", "whites", "white noise","kuwarna"],
-      "brisbanelions":["brisbane lions","maroons", "gorillas", "lions"],
-      "CarltonBlues":["carlton","blues","blue baggers","baggers","old navy blues"],
-      "collingwoodfc":["collingwood","magpies","pies","woods","woodsmen"],
-      "EssendonFC":["essendon","bombers","dons","same olds"],
-      "FremantleFC":["fremantle","dockers","freo","walyalup"], 
-      "GeelongCats":["geelong","cats"],
-      "gcfc":["gold coast suns","suns","sunnies","coasters"],
-      "GWSgiants":["gws giants","greater western sydney giants","giants","gws","orange team"],
-      "hawktalk":["hawthorn","hawks"],
-      "melbournefc":["melbourne","demons","dees","narrm","redlegs","fuchsias"],
-      "NorthMelbourneFC":["north melbourne","kangaroos","kangas","roos","north","shinboners"],
-      "weareportadelaide":["port adelaide","power","port","cockledivers", "seaside men", "seasiders", "magentas", "portonians", "ports"],
-      "RichmondFC":["richmond","tigers", "tiges", "fighting fury"],
-      "StKilda":["st kilda","saints","sainters"],
-      "sydneyswans":["sydney swans","swans","swannies", "bloods"],
-      "westcoasteagles":["west coast eagles","eagles"],
-      "westernbulldogs":["western bulldogs","dogs", "doggies", "scraggers", "the scray", "footscray", "tricolours"]
-    }
   CITY: |
     {
-      "melbourne":["melbourne train", "melbourne tram", "melbourne bus", "melbourne metro", "melbourne shuttle", "melbourne light rail", "melbourne skybus", "melbourne myki", "melbourne vline", "melbourne yarratrams", "melbourne metro trains", "melbourne train delay", "melbourne tram delay", "melbourne bus delay", "melbourne train fare", "melbourne tram fare", "melbourne bus fare", "melbourne train ticket", "melbourne tram ticket", "melbourne bus ticket", "melbourne overcrowded train", "melbourne overcrowded tram", "melbourne overcrowded bus", "melbourne track maintenance", "melbourne bus replacement"],
-      "sydney":["sydney train", "sydney tram", "sydney bus", "sydney metro", "sydney light rail", "sydney ferry", "opal", "sydney train delay", "sydney tram delay", "sydney bus delay", "sydney train fare", "sydney tram fare", "sydney bus fare", "sydney train ticket", "sydney tram ticket", "sydney bus ticket", "sydney overcrowded train", "sydney overcrowded tram", "sydney overcrowded bus", "sydney track maintenance", "sydney bus replacement"],
-      "brisbane":["brisbane train", "brisbane tram", "brisbane bus", "brisbane metro", "brisbane shuttle", "brisbane light rail", "brisbane translink", "brisbane gocard", "brisbane train delay", "brisbane tram delay", "brisbane bus delay", "brisbane train fare", "brisbane tram fare", "brisbane bus fare", "brisbane train ticket", "brisbane tram ticket", "brisbane bus ticket", "brisbane overcrowded train", "brisbane overcrowded tram", "brisbane overcrowded bus", "brisbane track maintenance", "brisbane bus replacement"],
-      "adelaide":["adelaide train", "adelaide tram", "adelaide bus", "adelaide metro", "adelaide shuttle", "adelaide light rail", "adelaide adelaidemetro", "adelaide metrocard", "adelaide train delay", "adelaide tram delay", "adelaide bus delay", "adelaide train fare", "adelaide tram fare", "adelaide bus fare", "adelaide train ticket", "adelaide tram ticket", "adelaide bus ticket", "adelaide overcrowded train", "adelaide overcrowded tram", "adelaide overcrowded bus", "adelaide track maintenance", "adelaide bus replacement"],
-      "perth":["perth train", "perth tram", "perth bus", "perth metro", "perth shuttle", "perth light rail", "perth transperth", "perth train delay", "perth tram delay", "perth bus delay", "perth train fare", "perth tram fare", "perth bus fare", "perth train ticket", "perth tram ticket", "perth bus ticket", "perth overcrowded train", "perth overcrowded tram", "perth overcrowded bus", "perth track maintenance", "perth bus replacement"],
-      "canberra":["canberra train", "canberra tram", "canberra bus", "canberra metro", "canberra shuttle", "canberra light rail", "canberra act transport", "canberra myway", "canberra train delay", "canberra tram delay", "canberra bus delay", "canberra train fare", "canberra tram fare", "canberra bus fare", "canberra train ticket", "canberra tram ticket", "canberra bus ticket", "canberra overcrowded train", "canberra overcrowded tram", "canberra overcrowded bus", "canberra track maintenance", "canberra bus replacement"],
-      "hobart":["hobart train", "hobart tram", "hobart bus", "hobart metro", "hobart shuttle", "hobart light rail", "hobart bus service", "hobart train delay", "hobart tram delay", "hobart bus delay", "hobart train fare", "hobart tram fare", "hobart bus fare", "hobart train ticket", "hobart tram ticket", "hobart bus ticket", "hobart overcrowded train", "hobart overcrowded tram", "hobart overcrowded bus", "hobart track maintenance", "hobart bus replacement"],
-      "darwin":["darwin train", "darwin tram", "darwin bus", "darwin metro", "darwin shuttle", "darwin light rail", "darwinbus", "darwin train delay", "darwin tram delay", "darwin bus delay", "darwin train fare", "darwin tram fare", "darwin bus fare", "darwin train ticket", "darwin tram ticket", "darwin bus ticket", "darwin overcrowded train", "darwin overcrowded tram", "darwin overcrowded bus", "darwin track maintenance", "darwin bus replacement"]
+      "melbourne" : ["melbourne train", "melbourne tram", "melbourne bus", "melbourne metro", "melbourne shuttle", "melbourne light rail", "melbourne skybus", "melbourne myki", "melbourne vline", "melbourne yarratrams", "melbourne metro trains", "melbourne train delay", "melbourne tram delay", "melbourne bus delay", "melbourne train fare", "melbourne tram fare", "melbourne bus fare", "melbourne train ticket", "melbourne tram ticket", "melbourne bus ticket", "melbourne overcrowded train", "melbourne overcrowded tram", "melbourne overcrowded bus", "melbourne track maintenance", "melbourne bus replacement"],
+      "sydney" : ["sydney train", "sydney tram", "sydney bus", "sydney metro", "sydney light rail", "sydney ferry", "opal", "sydney train delay", "sydney tram delay", "sydney bus delay", "sydney train fare", "sydney tram fare", "sydney bus fare", "sydney train ticket", "sydney tram ticket", "sydney bus ticket", "sydney overcrowded train", "sydney overcrowded tram", "sydney overcrowded bus", "sydney track maintenance", "sydney bus replacement"],
+      "brisbane" : ["brisbane train", "brisbane tram", "brisbane bus", "brisbane metro", "brisbane shuttle", "brisbane light rail", "brisbane translink", "brisbane gocard", "brisbane train delay", "brisbane tram delay", "brisbane bus delay", "brisbane train fare", "brisbane tram fare", "brisbane bus fare", "brisbane train ticket", "brisbane tram ticket", "brisbane bus ticket", "brisbane overcrowded train", "brisbane overcrowded tram", "brisbane overcrowded bus", "brisbane track maintenance", "brisbane bus replacement"],
+      "adelaide" : ["adelaide train", "adelaide tram", "adelaide bus", "adelaide metro", "adelaide shuttle", "adelaide light rail", "adelaide adelaidemetro", "adelaide metrocard", "adelaide train delay", "adelaide tram delay", "adelaide bus delay", "adelaide train fare", "adelaide tram fare", "adelaide bus fare", "adelaide train ticket", "adelaide tram ticket", "adelaide bus ticket", "adelaide overcrowded train", "adelaide overcrowded tram", "adelaide overcrowded bus", "adelaide track maintenance", "adelaide bus replacement"],
+      "perth" : ["perth train", "perth tram", "perth bus", "perth metro", "perth shuttle", "perth light rail", "perth transperth", "perth train delay", "perth tram delay", "perth bus delay", "perth train fare", "perth tram fare", "perth bus fare", "perth train ticket", "perth tram ticket", "perth bus ticket", "perth overcrowded train", "perth overcrowded tram", "perth overcrowded bus", "perth track maintenance", "perth bus replacement"],
+      "canberra" : ["canberra train", "canberra tram", "canberra bus", "canberra metro", "canberra shuttle", "canberra light rail", "canberra act transport", "canberra myway", "canberra train delay", "canberra tram delay", "canberra bus delay", "canberra train fare", "canberra tram fare", "canberra bus fare", "canberra train ticket", "canberra tram ticket", "canberra bus ticket", "canberra overcrowded train", "canberra overcrowded tram", "canberra overcrowded bus", "canberra track maintenance", "canberra bus replacement"],
+      "hobart" : ["hobart train", "hobart tram", "hobart bus", "hobart metro", "hobart shuttle", "hobart light rail", "hobart bus service", "hobart train delay", "hobart tram delay", "hobart bus delay", "hobart train fare", "hobart tram fare", "hobart bus fare", "hobart train ticket", "hobart tram ticket", "hobart bus ticket", "hobart overcrowded train", "hobart overcrowded tram", "hobart overcrowded bus", "hobart track maintenance", "hobart bus replacement"],
+      "darwin" : ["darwin train", "darwin tram", "darwin bus", "darwin metro", "darwin shuttle", "darwin light rail", "darwinbus", "darwin train delay", "darwin tram delay", "darwin bus delay", "darwin train fare", "darwin tram fare", "darwin bus fare", "darwin train ticket", "darwin tram ticket", "darwin bus ticket", "darwin overcrowded train", "darwin overcrowded tram", "darwin overcrowded bus", "darwin track maintenance", "darwin bus replacement"]
+    }  
+  TEAM: |
+    {
+      "adelaidefc" : ["adelaide crows","crows", "crows reserves", "whites", "white noise","kuwarna"],
+      "brisbanelions" : ["brisbane lions","maroons", "gorillas", "lions"],
+      "CarltonBlues" : ["carlton","blues","blue baggers","baggers","old navy blues"],
+      "collingwoodfc" : ["collingwood","magpies","pies","woods","woodsmen"],
+      "EssendonFC" : ["essendon","bombers","dons","same olds"],
+      "FremantleFC" : ["fremantle","dockers","freo","walyalup"], 
+      "GeelongCats" : ["geelong","cats"],
+      "gcfc" : ["gold coast suns","suns","sunnies","coasters"],
+      "GWSgiants" : ["gws giants","greater western sydney giants","giants","gws","orange team"],
+      "hawktalk" : ["hawthorn","hawks"],
+      "melbournefc" : ["melbourne","demons","dees","narrm","redlegs","fuchsias"],
+      "NorthMelbourneFC" : ["north melbourne","kangaroos","kangas","roos","north","shinboners"],
+      "weareportadelaide" : ["port adelaide","power","port","cockledivers", "seaside men", "seasiders", "magentas", "portonians", "ports"],
+      "RichmondFC" : ["richmond","tigers", "tiges", "fighting fury"],
+      "StKilda" : ["st kilda","saints","sainters"],
+      "sydneyswans" : ["sydney swans","swans","swannies", "bloods"],
+      "westcoasteagles" : ["west coast eagles","eagles"],
+      "westernbulldogs" : ["western bulldogs","dogs", "doggies", "scraggers", "the scray", "footscray", "tricolours"]
     }
-      
