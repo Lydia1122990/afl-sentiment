@@ -86,7 +86,7 @@ def main():
             }
 
             addElastic(doc_id, "afl-bluesky-fans", doc)
-            print(f"✅ Sent {team}: {followers} followers")
+            print(f"Sent {team}: {followers} followers")
 
         return "ok"
 
