@@ -28,3 +28,10 @@ Apply specs
 ```shell
 fission spec apply
 ```
+
+Testing: Run below two functions, output "ok" should be return when function is successfully ran
+
+```shell
+fission fn test --name aharvester
+fission fn log -f --name aharvester
+```
