@@ -1,0 +1,25 @@
+include:
+- ./function/transobservations/transobservations.py
+- ./function/transobservations/requirements.txt
+kind: ArchiveUploadSpec
+name: function-transobservations-transobservations-py-R1NW
+
+---
+apiVersion: fission.io/v1
+kind: Package
+metadata:
+  creationTimestamp: null
+  name: transobservations-pkg
+spec:
+  deployment:
+    checksum: {}
+  environment:
+    name: python39
+    namespace: ""
+  source:
+    checksum: {}
+    type: url
+    url: archive://function-transobservations-transobservations-py-R1NW
+status:
+  buildstatus: pending
+  lastUpdateTimestamp: "2025-05-17T09:34:00Z"
