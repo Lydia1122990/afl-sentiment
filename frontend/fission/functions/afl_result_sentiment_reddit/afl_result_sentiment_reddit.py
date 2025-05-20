@@ -120,7 +120,7 @@ def main() -> Dict[str, Any]:
 
     current_app.logger.info('Executing AFL team sentiment scores from reddit analysis query')
 
-    sentiment_result: Dict[str, Any] = es_client.search(index='afl-sentiment*', body=sentiment_query)
+    sentiment_result: Dict[str, Any] = es_client.search(index='afl-sentiment', body=sentiment_query)
     buckets: List[Dict[str, Any]] = sentiment_result.get('aggregations', {}).get('teams', {}).get('buckets', [])
 
     # Process sentiment data
