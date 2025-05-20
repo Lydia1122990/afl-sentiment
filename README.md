@@ -3,31 +3,31 @@
 #### codebase	layout	(folders	and	subfolders)
 ```
 .
-├── README.md
-├── backend
+├── README.md                               # Project overview and setup instructions
+├── backend                                 # Backend services and serverless functions
 │   ├── delete_duplicate_url.py
-│   ├── fission
-│   ├── harvest_mastodon_publictransport.py
-│   └── unit_test
-├── data
+│   ├── fission                             # Fission functions (harvesting, cleaning, store etc.)
+│   └── harvest_mastodon_publictransport.py
+│   
+├── data                                    # Any data you want to put in the code repository for manual insert
 │   └── README.md
-├── database
+├── database                                # ElasticSearch type mappings, queries
 │   └── README.md
-├── docs
+├── docs                                    # Documentation  
 │   └── README.md
 ├── env.yaml
 ├── frontend
-│   ├── Data_visualisation.ipynb
+│   ├── Data_visualisation.ipynb            # Frontend visualizations, notebooks, and user interface components
 │   ├── README.md
-│   ├── data_extract.ipynb
-│   └── fission
-├── path.txt
-├── specs
+│   ├── data_extract.ipynb                  # Jupyter notebook visualisation
+│   └── fission                             # Fission functions (Mainly for data extraction from ElasticSearch database)
+├── specs                                   # Kubernetes/Fission specs, secrets, and configuration files
 │   ├── elastic-secret.yaml
 │   └── shared-data.yaml
-└── test
+└── test                                    # Testing
     ├── 1st iter
     ├── 2nd iter
+    ├── unit_test
     ├── README.md
     ├── requirements.txt
     ├── test_transharvester.py
