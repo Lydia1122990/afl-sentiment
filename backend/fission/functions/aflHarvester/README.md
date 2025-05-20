@@ -19,6 +19,32 @@ fission fn create --spec --name addelastic --pkg elastic-pkg --env python39 --en
 fission route create --spec --name addelastic-route --function addelastic --url /addelastic --method POST --createingress
 ```
 
+Create mqtrigger for aflharvester
+```shell
+(
+    cd fission
+    fission mqtrigger create --name afl-harvesting \
+    --spec \
+    --function aflharvester \
+    --mqtype redis \
+    --mqtkind keda \
+    --topic afl \
+    --errortopic errors \
+    --maxretries 3 \
+    --metadata address=redis-headless.redis.svc.cluster.local:6379 \
+    --metadata listLength=100 \
+    --metadata listName=afl:subreddit
+)  
+```
+If required manually create index
+
+```shell
+  curl -X PUT "http://elasticsearch-master.elastic.svc.cluster.local:9200/afl-sentiment" \
+  -H 'Content-Type: application/json' \
+  -u <username>:<password> \
+  -k
+```
+
 Apply specs
 ```shell
 fission spec apply
