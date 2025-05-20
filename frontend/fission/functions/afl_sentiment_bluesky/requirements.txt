@@ -1,0 +1,4 @@
+flask
+elasticsearch8==8.14.0
+requests
+numpy

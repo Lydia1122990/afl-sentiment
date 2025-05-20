@@ -1,2 +1,6 @@
+*/.env
+backend/.env #
+
 .env
+origin/main
 .DS_Store

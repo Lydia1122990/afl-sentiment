@@ -1,0 +1,25 @@
+include:
+- ./functions/bluesky_fan/blueskyfan.py
+- ./functions/bluesky_fan/requirements.txt
+kind: ArchiveUploadSpec
+name: functions-bluesky-fan-blueskyfan-py-dhRL
+
+---
+apiVersion: fission.io/v1
+kind: Package
+metadata:
+  creationTimestamp: null
+  name: fanpkg
+spec:
+  deployment:
+    checksum: {}
+  environment:
+    name: python39
+    namespace: ""
+  source:
+    checksum: {}
+    type: url
+    url: archive://functions-bluesky-fan-blueskyfan-py-dhRL
+status:
+  buildstatus: pending
+  lastUpdateTimestamp: "2025-05-17T12:14:50Z"
