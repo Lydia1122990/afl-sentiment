@@ -1,0 +1,25 @@
+include:
+- ./functions/aflSubRed/aflSubRed.py
+- ./functions/aflSubRed/requirements.txt
+kind: ArchiveUploadSpec
+name: functions-aflsubred-aflsubred-py-IfBM
+
+---
+apiVersion: fission.io/v1
+kind: Package
+metadata:
+  creationTimestamp: null
+  name: aflsubred-pkg
+spec:
+  deployment:
+    checksum: {}
+  environment:
+    name: python39
+    namespace: ""
+  source:
+    checksum: {}
+    type: url
+    url: archive://functions-aflsubred-aflsubred-py-IfBM
+status:
+  buildstatus: pending
+  lastUpdateTimestamp: "2025-05-12T14:40:33Z"
