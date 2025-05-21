@@ -47,6 +47,8 @@ Chunmiao Zheng    1642700
     └── test_transobservations.py
 ```
 
+### Architecture
+![Alt text](https://gitlab.unimelb.edu.au/junjwang3/comp90024-team-54/-/blob/021e0d6be488dc1b85651f701bf23dbc18110ac6/docs/Architecture.png)
 
 Check all ElasticSearch pods are running before proceeding:
 
