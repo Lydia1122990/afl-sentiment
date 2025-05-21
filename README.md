@@ -1,4 +1,18 @@
 # COMP90024 Team 54
+```
+NAME              STUDENT ID 
+
+Xueying Yuan      1531588 
+
+Shuangquan Zheng  1331085 
+
+JunJie            1103084 
+
+Hao Xu            1468277 
+
+Chunmiao Zheng    1642700 
+```
+
 
 #### codebase	layout	(folders	and	subfolders)
 ```
